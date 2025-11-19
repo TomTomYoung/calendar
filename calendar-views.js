@@ -191,6 +191,7 @@
     const mergedOptions = mergeOptions(options);
 
     yearData.months.forEach(function (month) {
+      const mergedOptions = mergeOptions(options);
       const monthWrapper = document.createElement("div");
       monthWrapper.className = "calendar-month-grid";
 
