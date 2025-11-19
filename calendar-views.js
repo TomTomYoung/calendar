@@ -247,12 +247,24 @@
     return String(label);
   }
 
+  function getDayNumberLabel(dayNumber, options) {
+    const opt = ensureMerged(options);
+    const labels = opt.labels.dayNumberLabels;
+    const index = Math.max(1, Math.min(31, dayNumber)) - 1;
+    const label = labels[index];
+    if (label === undefined || label === null) {
+      return String(dayNumber);
+    }
+    return String(label);
+  }
+
   function renderGrid(container, yearData, options) {
     container.innerHTML = "";
 
     const mergedOptions = mergeOptions(options);
 
     yearData.months.forEach(function (month) {
+      const mergedOptions = mergeOptions(options);
       const monthWrapper = document.createElement("div");
       monthWrapper.className = "calendar-month-grid";
 
