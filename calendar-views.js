@@ -59,7 +59,7 @@
 
     el.style.width = opt.cellWidth + "px";
     el.style.height = opt.cellHeight + "px";
-    el.style.display = "inline-flex";
+    
     el.style.alignItems = "center";
     el.style.justifyContent = "center";
     el.style.fontFamily = opt.fontFamily;
