@@ -24,6 +24,27 @@
     #calendarContainer {
       margin-top: 12px;
     }
+    .style-editor {
+      margin-top: 12px;
+    }
+    .style-editor textarea {
+      width: 100%;
+      min-height: 160px;
+      font-family: "Consolas", "Menlo", "Monaco", monospace;
+      white-space: pre;
+    }
+    .style-editor-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 4px;
+      font-weight: bold;
+    }
+    .style-editor-note {
+      font-size: 12px;
+      color: #555;
+      margin: 4px 0 0;
+    }
     .calendar-month-grid {
       display: inline-block;
       margin: 8px;
@@ -130,6 +151,15 @@
     <button id="exportYamlButton">YAML</button>
   </div>
 
+  <div class="style-editor">
+    <div class="style-editor-header">
+      <span>セルスタイル設定 (JSON)</span>
+      <button id="applyStyleButton">スタイル適用</button>
+    </div>
+    <textarea id="styleJsonInput" spellcheck="false"></textarea>
+    <p class="style-editor-note">※スタイル設定はカレンダーデータとは独立しており、JSON/CSV/YAMLエクスポートには含まれません。</p>
+  </div>
+
   <div id="calendarContainer"></div>
 
   <textarea id="exportOutput" placeholder="エクスポート結果"></textarea>
@@ -150,8 +180,32 @@
       const exportYamlButton = document.getElementById("exportYamlButton");
       const calendarContainer = document.getElementById("calendarContainer");
       const exportOutput = document.getElementById("exportOutput");
+      const styleJsonInput = document.getElementById("styleJsonInput");
+      const applyStyleButton = document.getElementById("applyStyleButton");
 
       let currentYearData = null;
+      const defaultStyleOptions = {
+        cellWidth: 28,
+        cellHeight: 24,
+        fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+        fontSize: "11px",
+        colorWeekday: "#000",
+        colorWeekend: "#c00",
+        colorHoliday: "#c00",
+        colorBackground: "#fff",
+        colorNthWeekday: {
+          1: null,
+          2: null,
+          3: null,
+          4: "#0044cc", // 第4曜日を青で強調サンプル
+          5: "#008800"  // 第5曜日を緑で強調サンプル
+        }
+      };
+      let viewStyleOptions = JSON.parse(JSON.stringify(defaultStyleOptions));
+
+      function updateStyleEditor() {
+        styleJsonInput.value = JSON.stringify(viewStyleOptions, null, 2);
+      }
 
       function render() {
         const year = parseInt(yearInput.value, 10);
@@ -166,23 +220,7 @@
         calendarContainer.innerHTML = "";
 
         const view = viewSelect.value;
-        const viewOptions = {
-          cellWidth: 28,
-          cellHeight: 24,
-          fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-          fontSize: "11px",
-          colorWeekday: "#000",
-          colorWeekend: "#c00",
-          colorHoliday: "#c00",
-          colorBackground: "#fff",
-          colorNthWeekday: {
-            1: null,
-            2: null,
-            3: null,
-            4: "#0044cc", // 第4曜日を青で強調サンプル
-            5: "#008800"  // 第5曜日を緑で強調サンプル
-          }
-        };
+        const viewOptions = JSON.parse(JSON.stringify(viewStyleOptions));
 
         if (view === "grid") {
           CalendarViews.renderGrid(calendarContainer, currentYearData, viewOptions);
@@ -192,6 +230,20 @@
           CalendarViews.renderColumn(calendarContainer, currentYearData, viewOptions);
         }
       }
+
+      applyStyleButton.addEventListener("click", function () {
+        try {
+          const parsed = JSON.parse(styleJsonInput.value);
+          if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+            throw new Error("オブジェクト形式のJSONを入力してください。");
+          }
+          viewStyleOptions = parsed;
+          updateStyleEditor();
+          render();
+        } catch (error) {
+          alert("JSONを正しく入力してください。\n" + error.message);
+        }
+      });
 
       generateButton.addEventListener("click", render);
 
@@ -210,6 +262,7 @@
         exportOutput.value = DataExport.toYAML(currentYearData);
       });
 
+      updateStyleEditor();
       render();
     })();
   </script>
