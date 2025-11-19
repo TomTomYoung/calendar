@@ -24,6 +24,58 @@
     #calendarContainer {
       margin-top: 12px;
     }
+    .style-editor {
+      margin-top: 12px;
+    }
+    .style-editor textarea {
+      width: 100%;
+      min-height: 160px;
+      font-family: "Consolas", "Menlo", "Monaco", monospace;
+      white-space: pre;
+    }
+    .style-editor-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 4px;
+      font-weight: bold;
+    }
+    .style-editor-note {
+      font-size: 12px;
+      color: #555;
+      margin: 4px 0 0;
+    }
+    .style-parameter-reference {
+      margin-top: 8px;
+      padding: 8px;
+      border: 1px solid #e0e0e0;
+      border-radius: 4px;
+      background: #f8f8f8;
+      font-size: 12px;
+    }
+    .style-parameter-reference-title {
+      font-weight: bold;
+      margin-bottom: 4px;
+    }
+    .style-parameter-reference dl {
+      margin: 0;
+      display: grid;
+      grid-template-columns: auto 1fr;
+      column-gap: 12px;
+      row-gap: 4px;
+    }
+    .style-parameter-reference dt {
+      font-family: "Consolas", "Menlo", "Monaco", monospace;
+      background: #fff;
+      border: 1px solid #dedede;
+      border-radius: 4px;
+      padding: 2px 4px;
+      align-self: center;
+    }
+    .style-parameter-reference dd {
+      margin: 0;
+      line-height: 1.4;
+    }
     .calendar-month-grid {
       display: inline-block;
       margin: 8px;
@@ -130,6 +182,19 @@
     <button id="exportYamlButton">YAML</button>
   </div>
 
+  <div class="style-editor">
+    <div class="style-editor-header">
+      <span>セルスタイル設定 (JSON)</span>
+      <button id="applyStyleButton">スタイル適用</button>
+    </div>
+    <textarea id="styleJsonInput" spellcheck="false"></textarea>
+    <p class="style-editor-note">※スタイル設定はカレンダーデータとは独立しており、JSON/CSV/YAMLエクスポートには含まれません。</p>
+    <div class="style-parameter-reference">
+      <div class="style-parameter-reference-title">主なスタイル項目と意味</div>
+      <dl id="styleParameterList"></dl>
+    </div>
+  </div>
+
   <div id="calendarContainer"></div>
 
   <textarea id="exportOutput" placeholder="エクスポート結果"></textarea>
@@ -150,8 +215,103 @@
       const exportYamlButton = document.getElementById("exportYamlButton");
       const calendarContainer = document.getElementById("calendarContainer");
       const exportOutput = document.getElementById("exportOutput");
+      const styleJsonInput = document.getElementById("styleJsonInput");
+      const applyStyleButton = document.getElementById("applyStyleButton");
+      const styleParameterList = document.getElementById("styleParameterList");
 
       let currentYearData = null;
+      const DEFAULT_DAY_NUMBER_LABELS = Array.from({ length: 31 }, function (_, index) {
+        return String(index + 1);
+      });
+
+      const defaultStyleOptions = {
+        typography: {
+          fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+          fontSize: "11px",
+          weekdayTextColor: "#000000",
+          weekendTextColor: "#c03636",
+          holidayTextColor: "#c03636",
+          nthWeekdayTextColor: {
+            1: null,
+            2: null,
+            3: null,
+            4: "#0044cc",
+            5: "#008800"
+          }
+        },
+        cell: {
+          width: 28,
+          height: 24,
+          paddingX: 0,
+          paddingY: 0,
+          backgroundColor: "#ffffff",
+          border: {
+            width: 1,
+            style: "solid",
+            color: "#dddddd",
+            radius: 0
+          }
+        },
+        labels: {
+          yearMonthFormat: "{year} / {month}",
+          weekdayLabels: ["日", "月", "火", "水", "木", "金", "土"],
+          dayNumberLabels: DEFAULT_DAY_NUMBER_LABELS
+        }
+      };
+
+      const STYLE_PARAMETER_DESCRIPTIONS = [
+        { path: "typography.fontFamily", description: "セル内テキストのフォントファミリ" },
+        { path: "typography.fontSize", description: "セル内テキストのサイズ (px, rem 等)" },
+        { path: "typography.weekdayTextColor", description: "平日の文字色" },
+        { path: "typography.weekendTextColor", description: "土日の文字色" },
+        { path: "typography.holidayTextColor", description: "祝日の文字色" },
+        { path: "typography.nthWeekdayTextColor['4']", description: "第4◯曜日のみ別色にする例" },
+        { path: "cell.width", description: "セルの横幅 (px)" },
+        { path: "cell.height", description: "セルの高さ (px)" },
+        { path: "cell.paddingX", description: "セル左右の余白 (px)" },
+        { path: "cell.paddingY", description: "セル上下の余白 (px)" },
+        { path: "cell.backgroundColor", description: "セル背景色" },
+        { path: "cell.border.width", description: "セル境界線の太さ (px)" },
+        { path: "cell.border.color", description: "セル境界線の色" },
+        { path: "cell.border.style", description: "セル境界線のスタイル (solid, dashed など)" },
+        { path: "cell.border.radius", description: "セル角の丸み (px)" },
+        { path: "labels.yearMonthFormat", description: "{year}/{month}を差し替える年月表示テンプレート" },
+        { path: "labels.weekdayLabels", description: "曜日ラベル（7件の配列）" },
+        { path: "labels.dayNumberLabels", description: "1〜31日の表示内容（31件の配列）" }
+      ];
+
+      function cloneDefaultStyleOptions() {
+        return JSON.parse(JSON.stringify(defaultStyleOptions));
+      }
+
+      function mergeDeep(target, source) {
+        Object.keys(source).forEach(function (key) {
+          const value = source[key];
+          if (value && typeof value === "object" && !Array.isArray(value)) {
+            if (!target[key] || typeof target[key] !== "object" || Array.isArray(target[key])) {
+              target[key] = {};
+            }
+            mergeDeep(target[key], value);
+          } else if (Array.isArray(value)) {
+            target[key] = value.slice();
+          } else {
+            target[key] = value;
+          }
+        });
+      }
+
+      let viewStyleOptions = cloneDefaultStyleOptions();
+
+      function updateStyleEditor() {
+        styleJsonInput.value = JSON.stringify(viewStyleOptions, null, 2);
+      }
+
+      function renderStyleParameterReference() {
+        if (!styleParameterList) return;
+        styleParameterList.innerHTML = STYLE_PARAMETER_DESCRIPTIONS.map(function (item) {
+          return "<dt><code>" + item.path + "</code></dt><dd>" + item.description + "</dd>";
+        }).join("");
+      }
 
       function render() {
         const year = parseInt(yearInput.value, 10);
@@ -166,23 +326,7 @@
         calendarContainer.innerHTML = "";
 
         const view = viewSelect.value;
-        const viewOptions = {
-          cellWidth: 28,
-          cellHeight: 24,
-          fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-          fontSize: "11px",
-          colorWeekday: "#000",
-          colorWeekend: "#c00",
-          colorHoliday: "#c00",
-          colorBackground: "#fff",
-          colorNthWeekday: {
-            1: null,
-            2: null,
-            3: null,
-            4: "#0044cc", // 第4曜日を青で強調サンプル
-            5: "#008800"  // 第5曜日を緑で強調サンプル
-          }
-        };
+        const viewOptions = JSON.parse(JSON.stringify(viewStyleOptions));
 
         if (view === "grid") {
           CalendarViews.renderGrid(calendarContainer, currentYearData, viewOptions);
@@ -192,6 +336,22 @@
           CalendarViews.renderColumn(calendarContainer, currentYearData, viewOptions);
         }
       }
+
+      applyStyleButton.addEventListener("click", function () {
+        try {
+          const parsed = JSON.parse(styleJsonInput.value);
+          if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+            throw new Error("オブジェクト形式のJSONを入力してください。");
+          }
+          const merged = cloneDefaultStyleOptions();
+          mergeDeep(merged, parsed);
+          viewStyleOptions = merged;
+          updateStyleEditor();
+          render();
+        } catch (error) {
+          alert("JSONを正しく入力してください。\n" + error.message);
+        }
+      });
 
       generateButton.addEventListener("click", render);
 
@@ -210,6 +370,8 @@
         exportOutput.value = DataExport.toYAML(currentYearData);
       });
 
+      renderStyleParameterReference();
+      updateStyleEditor();
       render();
     })();
   </script>
