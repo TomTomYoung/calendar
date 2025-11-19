@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>家計簿 & カロリーカレンダー</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      font-family: "Noto Sans JP", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      margin: 0;
+      padding: 24px;
+      background: #f8fafc;
+      color: #0f172a;
+      line-height: 1.5;
+    }
+    h1 {
+      margin-bottom: 8px;
+      font-size: 24px;
+    }
+    p.page-lead {
+      margin-top: 0;
+      color: #475569;
+    }
+    .control-panel {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      padding: 12px;
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 2px 12px rgba(15, 23, 42, 0.08);
+      margin-bottom: 16px;
+    }
+    .control-panel label {
+      display: flex;
+      flex-direction: column;
+      font-size: 13px;
+      color: #475569;
+    }
+    .control-panel input,
+    .control-panel select {
+      margin-top: 4px;
+      padding: 6px 8px;
+      border: 1px solid #cbd5f5;
+      border-radius: 8px;
+      font-size: 14px;
+      min-width: 120px;
+    }
+    .control-panel button {
+      border: none;
+      background: #2563eb;
+      color: #fff;
+      padding: 10px 18px;
+      border-radius: 999px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s ease;
+      align-self: flex-end;
+    }
+    .control-panel button:hover {
+      background: #1d4ed8;
+    }
+    .layout {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 20px;
+    }
+    @media (max-width: 960px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+    }
+    .calendar-card,
+    .entry-card {
+      background: #fff;
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 20px 45px rgba(15, 23, 42, 0.08);
+    }
+    .calendar-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      font-weight: 600;
+    }
+    table.calendar-grid {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+    }
+    table.calendar-grid th,
+    table.calendar-grid td {
+      border: 1px solid #e2e8f0;
+      padding: 4px;
+      vertical-align: top;
+      min-height: 90px;
+      background: #fff;
+    }
+    table.calendar-grid th {
+      text-align: center;
+      background: #eef2ff;
+      color: #475569;
+      font-size: 13px;
+    }
+    td.day-cell {
+      cursor: pointer;
+      transition: background 0.2s ease, border-color 0.2s ease;
+    }
+    td.day-cell:hover {
+      background: #eff6ff;
+    }
+    td.day-cell.selected {
+      border: 2px solid #2563eb;
+      background: #e0ecff;
+    }
+    td.day-cell .day-number {
+      font-weight: 600;
+      color: #0f172a;
+      margin-bottom: 4px;
+    }
+    .cell-entries {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .cell-entries li {
+      font-size: 11px;
+      display: flex;
+      justify-content: space-between;
+      gap: 6px;
+      padding: 2px 4px;
+      background: #f1f5f9;
+      border-radius: 6px;
+      color: #0f172a;
+    }
+    .entry-card h2 {
+      margin-top: 0;
+      margin-bottom: 4px;
+      font-size: 18px;
+    }
+    .selected-date-label {
+      font-weight: 600;
+      color: #1d4ed8;
+      margin-bottom: 8px;
+    }
+    .json-instruction {
+      font-size: 13px;
+      color: #475569;
+      background: #f1f5f9;
+      padding: 8px 12px;
+      border-radius: 10px;
+      margin-bottom: 12px;
+    }
+    .json-editor textarea {
+      width: 100%;
+      min-height: 220px;
+      resize: vertical;
+      padding: 10px 12px;
+      border: 1px solid #cbd5f5;
+      border-radius: 12px;
+      font-family: "JetBrains Mono", "Roboto Mono", Consolas, monospace;
+      font-size: 13px;
+      line-height: 1.5;
+      background: #0f172a;
+      color: #e2e8f0;
+    }
+    .json-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 10px 0;
+    }
+    .json-actions button {
+      border: none;
+      border-radius: 999px;
+      padding: 8px 16px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+    #saveJsonButton {
+      background: #16a34a;
+      color: #fff;
+      font-weight: 600;
+    }
+    #saveJsonButton:hover {
+      background: #15803d;
+    }
+    #formatJsonButton {
+      background: #dbeafe;
+      color: #1d4ed8;
+      font-weight: 600;
+    }
+    #formatJsonButton:hover {
+      background: #bfdbfe;
+    }
+    #clearDayButton {
+      background: #e2e8f0;
+      color: #0f172a;
+    }
+    #clearDayButton:hover {
+      background: #cbd5f5;
+    }
+    .json-status {
+      font-size: 12px;
+      color: #475569;
+      margin-bottom: 12px;
+    }
+    .json-status.error {
+      color: #dc2626;
+    }
+    .json-preview {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 12px;
+      max-height: 260px;
+      overflow: auto;
+    }
+    .json-preview h3 {
+      margin: 0 0 8px;
+      font-size: 14px;
+    }
+    .json-preview pre {
+      margin: 0;
+      white-space: pre-wrap;
+      word-break: break-all;
+      font-family: "JetBrains Mono", "Roboto Mono", Consolas, monospace;
+      font-size: 12px;
+      color: #0f172a;
+    }
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      font-size: 12px;
+      color: #475569;
+      margin-top: 8px;
+    }
+    .legend span {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: #f1f5f9;
+      padding: 2px 8px;
+      border-radius: 999px;
+    }
+    .cell-summary-badge {
+      font-size: 10px;
+      color: #475569;
+      background: #dbeafe;
+      border-radius: 999px;
+      padding: 0 6px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>家計簿 & カロリーカレンダー</h1>
+    <p class="page-lead">セルを選択して、その日のJSONを直接編集できます。レシートやカロリー、自由メモを好きな構造で管理してください。</p>
+  </header>
+
+  <section class="control-panel">
+    <label>
+      年
+      <input type="number" id="yearInput" min="1900" max="9999">
+    </label>
+    <label>
+      月
+      <select id="monthInput"></select>
+    </label>
+    <label>
+      週の開始曜日
+      <select id="startWeekdayInput">
+        <option value="0">日曜日</option>
+        <option value="1">月曜日</option>
+      </select>
+    </label>
+    <button id="buildButton">カレンダーを更新</button>
+  </section>
+
+  <div class="layout">
+    <section class="calendar-card">
+      <div class="calendar-header">
+        <span id="calendarTitle"></span>
+        <div class="legend">
+          <span>🧾 レシート</span>
+          <span>🔥 カロリー</span>
+          <span>✏️ メモ</span>
+        </div>
+      </div>
+      <table class="calendar-grid">
+        <thead>
+          <tr id="weekdayHeader"></tr>
+        </thead>
+        <tbody id="calendarBody"></tbody>
+      </table>
+    </section>
+
+    <section class="entry-card">
+      <h2>日別JSON</h2>
+      <div class="selected-date-label" id="selectedDateLabel">日付を選択してください</div>
+      <div class="json-instruction">
+        セルをクリック → JSONを編集 → 保存。配列でもオブジェクトでも自由に記述できます。整形やリセットもワンクリックです。
+      </div>
+      <div class="json-editor">
+        <textarea id="jsonEditor" spellcheck="false" placeholder='{"receipt":[{"label":"昼食","amount":1200}],"calorie":1800,"memo":"控えめ"}'></textarea>
+      </div>
+      <div class="json-actions">
+        <button id="saveJsonButton" type="button">この日のJSONを保存</button>
+        <button id="formatJsonButton" type="button">整形して読みやすく</button>
+        <button id="clearDayButton" type="button">この日のJSONをリセット</button>
+      </div>
+      <div id="jsonStatus" class="json-status">編集する日付を選択してください。</div>
+      <div class="json-preview">
+        <h3>プレビュー</h3>
+        <pre id="jsonPreview">(なし)</pre>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    (function () {
+      "use strict";
+
+      const WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"];
+      const STORAGE_KEY = "kakeibo-calendar-entries";
+      const DEFAULT_JSON_TEMPLATE = JSON.stringify({
+        receipt: [{ label: "昼食", amount: 1200 }],
+        calorie: 1800,
+        memo: "控えめに"
+      }, null, 2);
+
+      const state = {
+        year: 0,
+        month: 0,
+        startWeekday: 0,
+        selectedDay: null,
+        entries: {}
+      };
+
+      const yearInput = document.getElementById("yearInput");
+      const monthInput = document.getElementById("monthInput");
+      const startWeekdayInput = document.getElementById("startWeekdayInput");
+      const buildButton = document.getElementById("buildButton");
+      const weekdayHeader = document.getElementById("weekdayHeader");
+      const calendarBody = document.getElementById("calendarBody");
+      const calendarTitle = document.getElementById("calendarTitle");
+      const selectedDateLabel = document.getElementById("selectedDateLabel");
+      const jsonEditor = document.getElementById("jsonEditor");
+      const saveJsonButton = document.getElementById("saveJsonButton");
+      const formatJsonButton = document.getElementById("formatJsonButton");
+      const jsonStatus = document.getElementById("jsonStatus");
+      const jsonPreview = document.getElementById("jsonPreview");
+      const clearDayButton = document.getElementById("clearDayButton");
+
+      function initSelectors() {
+        const now = new Date();
+        for (let m = 1; m <= 12; m++) {
+          const option = document.createElement("option");
+          option.value = m;
+          option.textContent = m + "月";
+          monthInput.appendChild(option);
+        }
+        state.year = now.getFullYear();
+        state.month = now.getMonth() + 1;
+        state.startWeekday = 0;
+        state.selectedDay = now.getDate();
+        yearInput.value = state.year;
+        monthInput.value = String(state.month);
+        startWeekdayInput.value = String(state.startWeekday);
+      }
+
+      function loadEntries() {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (parsed && typeof parsed === "object") {
+              Object.keys(parsed).forEach(function (key) {
+                if (typeof parsed[key] === "string") {
+                  state.entries[key] = parsed[key];
+                } else {
+                  state.entries[key] = JSON.stringify(parsed[key], null, 2);
+                }
+              });
+            }
+          }
+        } catch (error) {
+          console.warn("Failed to load entries", error);
+          state.entries = {};
+        }
+      }
+
+      function saveEntries() {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(state.entries));
+        } catch (error) {
+          console.warn("Failed to save entries", error);
+        }
+      }
+
+      function formatDateKey(year, month, day) {
+        return [year, month.toString().padStart(2, "0"), day.toString().padStart(2, "0")].join("-");
+      }
+
+      function getJsonStringForDay(year, month, day) {
+        const key = formatDateKey(year, month, day);
+        return state.entries[key] || "";
+      }
+
+      function setJsonStringForDay(year, month, day, jsonString) {
+        const key = formatDateKey(year, month, day);
+        const trimmed = (jsonString || "").trim();
+        if (!trimmed) {
+          delete state.entries[key];
+        } else {
+          state.entries[key] = trimmed;
+        }
+        saveEntries();
+      }
+
+      function buildWeekdayHeader() {
+        weekdayHeader.innerHTML = "";
+        const start = Number(state.startWeekday) || 0;
+        for (let i = 0; i < 7; i++) {
+          const weekdayIndex = (start + i) % 7;
+          const th = document.createElement("th");
+          th.textContent = WEEKDAYS[weekdayIndex];
+          weekdayHeader.appendChild(th);
+        }
+      }
+
+      function buildCalendar() {
+        state.year = Number(yearInput.value) || state.year;
+        state.month = Number(monthInput.value) || state.month;
+        state.startWeekday = Number(startWeekdayInput.value) || 0;
+
+        const firstDay = new Date(state.year, state.month - 1, 1);
+        const daysInMonth = new Date(state.year, state.month, 0).getDate();
+        const leadingBlank = (firstDay.getDay() - state.startWeekday + 7) % 7;
+
+        calendarTitle.textContent = state.year + "年 " + state.month + "月";
+        buildWeekdayHeader();
+
+        calendarBody.innerHTML = "";
+        const totalCells = Math.ceil((leadingBlank + daysInMonth) / 7) * 7;
+        let currentDay = 1;
+
+        for (let row = 0; row < totalCells / 7; row++) {
+          const tr = document.createElement("tr");
+          for (let col = 0; col < 7; col++) {
+            const cellIndex = row * 7 + col;
+            const td = document.createElement("td");
+            if (cellIndex < leadingBlank || currentDay > daysInMonth) {
+              td.classList.add("empty-cell");
+              tr.appendChild(td);
+              continue;
+            }
+            td.classList.add("day-cell");
+            td.dataset.day = String(currentDay);
+            const numberEl = document.createElement("div");
+            numberEl.className = "day-number";
+            numberEl.textContent = currentDay;
+            const listEl = document.createElement("ul");
+            listEl.className = "cell-entries";
+            td.appendChild(numberEl);
+            td.appendChild(listEl);
+            td.addEventListener("click", function () {
+              selectDay(currentDay);
+            });
+            renderCellJsonSummary(currentDay, listEl);
+            if (state.selectedDay === currentDay) {
+              td.classList.add("selected");
+            }
+            currentDay += 1;
+            tr.appendChild(td);
+          }
+          calendarBody.appendChild(tr);
+        }
+
+        if (!state.selectedDay || state.selectedDay > daysInMonth) {
+          state.selectedDay = null;
+        }
+        updateSelectedDateLabel();
+      }
+
+      function describeValueForSummary(value) {
+        if (value === null) {
+          return "null";
+        }
+        if (Array.isArray(value)) {
+          return "配列(" + value.length + "件)";
+        }
+        if (typeof value === "object") {
+          return "オブジェクト(" + Object.keys(value).length + "項目)";
+        }
+        if (typeof value === "number") {
+          return value.toLocaleString();
+        }
+        return String(value);
+      }
+
+      function summarizeJsonForCell(value) {
+        if (value === null || typeof value !== "object") {
+          return [describeValueForSummary(value)];
+        }
+        const entries = Array.isArray(value)
+          ? value.map(function (item, index) {
+            return "[" + index + "] " + describeValueForSummary(item);
+          })
+          : Object.keys(value).map(function (key) {
+            return key + "：" + describeValueForSummary(value[key]);
+          });
+        return entries;
+      }
+
+      function renderCellJsonSummary(day, container) {
+        const jsonString = getJsonStringForDay(state.year, state.month, day);
+        const target = container || document.querySelector(
+          '.day-cell[data-day="' + day + '"] .cell-entries'
+        );
+        if (!target) {
+          return;
+        }
+        target.innerHTML = "";
+        if (!jsonString) {
+          return;
+        }
+        try {
+          const parsed = JSON.parse(jsonString);
+          const allLines = summarizeJsonForCell(parsed);
+          allLines.slice(0, 3).forEach(function (line) {
+            const li = document.createElement("li");
+            li.textContent = line;
+            target.appendChild(li);
+          });
+          if (allLines.length > 3) {
+            const more = document.createElement("li");
+            more.textContent = "…ほか" + (allLines.length - 3) + "件";
+            target.appendChild(more);
+          }
+          if (allLines.length === 0) {
+            const empty = document.createElement("li");
+            empty.textContent = "JSONあり (表示できる項目なし)";
+            target.appendChild(empty);
+          }
+        } catch (error) {
+          const li = document.createElement("li");
+          li.textContent = "JSONエラー";
+          target.appendChild(li);
+        }
+      }
+
+      function selectDay(day) {
+        if (!day) {
+          return;
+        }
+        const previous = document.querySelector("td.day-cell.selected");
+        if (previous) {
+          previous.classList.remove("selected");
+        }
+        const target = document.querySelector('td.day-cell[data-day="' + day + '"]');
+        if (target) {
+          target.classList.add("selected");
+        }
+        state.selectedDay = day;
+        updateSelectedDateLabel();
+        refreshJsonEditor();
+      }
+
+      function updateSelectedDateLabel() {
+        if (!state.selectedDay) {
+          selectedDateLabel.textContent = "日付を選択してください";
+          return;
+        }
+        selectedDateLabel.textContent = state.year + "年" + state.month + "月" + state.selectedDay + "日のデータ";
+      }
+
+      function refreshJsonEditor() {
+        if (!jsonEditor) {
+          return;
+        }
+        if (!state.selectedDay) {
+          jsonEditor.value = "";
+          jsonEditor.disabled = true;
+          jsonStatus.textContent = "日付を選択するとJSONを編集できます。";
+          jsonStatus.classList.remove("error");
+          jsonPreview.textContent = "(なし)";
+          return;
+        }
+        jsonEditor.disabled = false;
+        const existing = getJsonStringForDay(state.year, state.month, state.selectedDay);
+        jsonEditor.value = existing || DEFAULT_JSON_TEMPLATE;
+        jsonStatus.textContent = existing ? "この日のJSONを編集できます。" : "テンプレートを編集して保存してください。";
+        jsonStatus.classList.remove("error");
+        updatePreviewFromEditor({ save: false });
+      }
+
+      function updatePreviewFromEditor(options) {
+        options = options || {};
+        if (!state.selectedDay) {
+          jsonPreview.textContent = "(なし)";
+          return;
+        }
+        const rawText = jsonEditor.value;
+        const trimmed = rawText.trim();
+        if (!trimmed) {
+          jsonPreview.textContent = "(空のJSON)";
+          jsonStatus.textContent = "空の状態で保存するとこの日のJSONは削除されます。";
+          jsonStatus.classList.remove("error");
+          if (options.save) {
+            setJsonStringForDay(state.year, state.month, state.selectedDay, "");
+            renderCellJsonSummary(state.selectedDay);
+          }
+          return;
+        }
+        try {
+          const parsed = JSON.parse(trimmed);
+          jsonPreview.textContent = JSON.stringify(parsed, null, 2);
+          jsonStatus.textContent = options.save ? "✅ JSONを保存しました" : "プレビューを更新しました";
+          jsonStatus.classList.remove("error");
+          if (options.save) {
+            setJsonStringForDay(state.year, state.month, state.selectedDay, trimmed);
+            renderCellJsonSummary(state.selectedDay);
+          }
+        } catch (error) {
+          jsonPreview.textContent = "(JSONエラー)";
+          jsonStatus.textContent = "⚠️ JSONエラー: " + error.message;
+          jsonStatus.classList.add("error");
+        }
+      }
+
+      function handleJsonInput() {
+        if (!state.selectedDay) {
+          return;
+        }
+        updatePreviewFromEditor({ save: true });
+      }
+
+      function handleSaveJson() {
+        if (!state.selectedDay) {
+          alert("カレンダーセルをクリックして日付を選択してください。");
+          return;
+        }
+        updatePreviewFromEditor({ save: true });
+      }
+
+      function handleFormatJson() {
+        if (!state.selectedDay) {
+          alert("日付を選択してください。");
+          return;
+        }
+        const trimmed = jsonEditor.value.trim();
+        if (!trimmed) {
+          jsonStatus.textContent = "空のため整形対象がありません。";
+          jsonStatus.classList.remove("error");
+          return;
+        }
+        try {
+          const parsed = JSON.parse(trimmed);
+          jsonEditor.value = JSON.stringify(parsed, null, 2);
+          updatePreviewFromEditor({ save: true });
+        } catch (error) {
+          jsonStatus.textContent = "⚠️ JSONエラー: " + error.message;
+          jsonStatus.classList.add("error");
+        }
+      }
+
+      function handleClearDay() {
+        if (!state.selectedDay) {
+          alert("リセットする日付を選択してください。");
+          return;
+        }
+        if (!confirm("この日のJSONを空にしますか？")) {
+          return;
+        }
+        setJsonStringForDay(state.year, state.month, state.selectedDay, "");
+        jsonEditor.value = DEFAULT_JSON_TEMPLATE;
+        jsonPreview.textContent = "(なし)";
+        jsonStatus.textContent = "この日のJSONを削除しました。";
+        jsonStatus.classList.remove("error");
+        renderCellJsonSummary(state.selectedDay);
+      }
+
+      buildButton.addEventListener("click", buildCalendar);
+      clearDayButton.addEventListener("click", handleClearDay);
+      saveJsonButton.addEventListener("click", handleSaveJson);
+      formatJsonButton.addEventListener("click", handleFormatJson);
+      jsonEditor.addEventListener("input", handleJsonInput);
+      startWeekdayInput.addEventListener("change", buildCalendar);
+      yearInput.addEventListener("change", buildCalendar);
+      monthInput.addEventListener("change", buildCalendar);
+
+      initSelectors();
+      loadEntries();
+      buildCalendar();
+      if (state.selectedDay) {
+        selectDay(state.selectedDay);
+      } else {
+        refreshJsonEditor();
+      }
+    })();
+  </script>
+</body>
+</html>
