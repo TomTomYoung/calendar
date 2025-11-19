@@ -1,7 +1,7 @@
 (function (global) {
   "use strict";
 
-  const JP_WEEKDAY_LABELS = ["日", "月", "火", "水", "木", "金", "土"];
+  const DEFAULT_WEEKDAY_LABELS = ["日", "月", "火", "水", "木", "金", "土"];
 
   const defaultViewOptions = {
     cellWidth: 32,
@@ -18,7 +18,9 @@
       3: null,
       4: null,
       5: null
-    }
+    },
+    yearMonthFormat: "{year} / {month}",
+    weekdayLabels: DEFAULT_WEEKDAY_LABELS
   };
 
   function mergeOptions(options) {
@@ -27,6 +29,14 @@
     }
     const merged = Object.assign({}, defaultViewOptions, options || {});
     merged.colorNthWeekday = Object.assign({}, defaultViewOptions.colorNthWeekday, (options && options.colorNthWeekday) || {});
+    if (Array.isArray(options && options.weekdayLabels) && (options.weekdayLabels || []).length === 7) {
+      merged.weekdayLabels = options.weekdayLabels.slice();
+    } else {
+      merged.weekdayLabels = defaultViewOptions.weekdayLabels.slice();
+    }
+    merged.yearMonthFormat = typeof merged.yearMonthFormat === "string" && merged.yearMonthFormat.length
+      ? merged.yearMonthFormat
+      : defaultViewOptions.yearMonthFormat;
     Object.defineProperty(merged, "__calendarViewMerged", {
       value: true,
       enumerable: false,
@@ -34,6 +44,13 @@
       writable: false
     });
     return merged;
+  }
+
+  function formatYearMonthLabel(formatString, year, month) {
+    if (typeof formatString === "string" && formatString.length > 0) {
+      return formatString.replace(/\{year\}/g, year).replace(/\{month\}/g, month);
+    }
+    return year + " / " + month;
   }
 
   function applyWeekdayLabelStyle(el, orientation, options) {
@@ -86,20 +103,20 @@
     container.innerHTML = "";
 
     yearData.months.forEach(function (month) {
+      const mergedOptions = mergeOptions(options);
       const monthWrapper = document.createElement("div");
       monthWrapper.className = "calendar-month-grid";
 
       const title = document.createElement("h2");
-      title.textContent = yearData.year + " / " + month.month;
+      title.textContent = formatYearMonthLabel(mergedOptions.yearMonthFormat, yearData.year, month.month);
       monthWrapper.appendChild(title);
 
       const table = document.createElement("table");
-      const mergedOptions = mergeOptions(options);
       table.style.width = (mergedOptions.cellWidth * 7) + "px";
 
       const thead = document.createElement("thead");
       const trHead = document.createElement("tr");
-      JP_WEEKDAY_LABELS.forEach(function (label) {
+      mergedOptions.weekdayLabels.forEach(function (label) {
         const th = document.createElement("th");
         th.textContent = label;
         applyWeekdayLabelStyle(th, "column", mergedOptions);
@@ -153,12 +170,14 @@
   function renderRow(container, yearData, options) {
     container.innerHTML = "";
 
+    const mergedOptions = mergeOptions(options);
+
     yearData.months.forEach(function (month) {
       const row = document.createElement("div");
       row.className = "calendar-row-month";
 
       const label = document.createElement("span");
-      label.textContent = yearData.year + "/" + month.month;
+      label.textContent = formatYearMonthLabel(mergedOptions.yearMonthFormat, yearData.year, month.month);
       row.appendChild(label);
 
       const daysWrapper = document.createElement("div");
@@ -188,12 +207,14 @@
     const wrapper = document.createElement("div");
     wrapper.className = "calendar-column-wrapper";
 
+    const mergedOptions = mergeOptions(options);
+
     yearData.months.forEach(function (month) {
       const col = document.createElement("div");
       col.className = "calendar-column-month";
 
       const label = document.createElement("div");
-      label.textContent = yearData.year + "/" + month.month;
+      label.textContent = formatYearMonthLabel(mergedOptions.yearMonthFormat, yearData.year, month.month);
       col.appendChild(label);
 
       month.days.forEach(function (day) {
