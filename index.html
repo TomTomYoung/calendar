@@ -199,9 +199,32 @@
           3: null,
           4: "#0044cc", // 第4曜日を青で強調サンプル
           5: "#008800"  // 第5曜日を緑で強調サンプル
-        }
+        },
+        yearMonthFormat: "{year} / {month}",
+        weekdayLabels: ["日", "月", "火", "水", "木", "金", "土"]
       };
-      let viewStyleOptions = JSON.parse(JSON.stringify(defaultStyleOptions));
+
+      function cloneDefaultStyleOptions() {
+        return JSON.parse(JSON.stringify(defaultStyleOptions));
+      }
+
+      function mergeDeep(target, source) {
+        Object.keys(source).forEach(function (key) {
+          const value = source[key];
+          if (value && typeof value === "object" && !Array.isArray(value)) {
+            if (!target[key] || typeof target[key] !== "object" || Array.isArray(target[key])) {
+              target[key] = {};
+            }
+            mergeDeep(target[key], value);
+          } else if (Array.isArray(value)) {
+            target[key] = value.slice();
+          } else {
+            target[key] = value;
+          }
+        });
+      }
+
+      let viewStyleOptions = cloneDefaultStyleOptions();
 
       function updateStyleEditor() {
         styleJsonInput.value = JSON.stringify(viewStyleOptions, null, 2);
@@ -237,7 +260,9 @@
           if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
             throw new Error("オブジェクト形式のJSONを入力してください。");
           }
-          viewStyleOptions = parsed;
+          const merged = cloneDefaultStyleOptions();
+          mergeDeep(merged, parsed);
+          viewStyleOptions = merged;
           updateStyleEditor();
           render();
         } catch (error) {
