@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>家計簿 & カロリーカレンダー</title>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      font-family: "Noto Sans JP", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      margin: 0;
+      padding: 24px;
+      background: #f8fafc;
+      color: #0f172a;
+      line-height: 1.5;
+    }
+    h1 {
+      margin-bottom: 8px;
+      font-size: 24px;
+    }
+    p.page-lead {
+      margin-top: 0;
+      color: #475569;
+    }
+    .control-panel {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      padding: 12px;
+      background: #fff;
+      border-radius: 12px;
+      box-shadow: 0 2px 12px rgba(15, 23, 42, 0.08);
+      margin-bottom: 16px;
+    }
+    .control-panel label {
+      display: flex;
+      flex-direction: column;
+      font-size: 13px;
+      color: #475569;
+    }
+    .control-panel input,
+    .control-panel select {
+      margin-top: 4px;
+      padding: 6px 8px;
+      border: 1px solid #cbd5f5;
+      border-radius: 8px;
+      font-size: 14px;
+      min-width: 120px;
+    }
+    .control-panel button {
+      border: none;
+      background: #2563eb;
+      color: #fff;
+      padding: 10px 18px;
+      border-radius: 999px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s ease;
+      align-self: flex-end;
+    }
+    .control-panel button:hover {
+      background: #1d4ed8;
+    }
+    .layout {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 20px;
+    }
+    @media (max-width: 960px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+    }
+    .calendar-card,
+    .entry-card {
+      background: #fff;
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 20px 45px rgba(15, 23, 42, 0.08);
+    }
+    .calendar-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+      font-weight: 600;
+    }
+    table.calendar-grid {
+      width: 100%;
+      border-collapse: collapse;
+      table-layout: fixed;
+    }
+    table.calendar-grid th,
+    table.calendar-grid td {
+      border: 1px solid #e2e8f0;
+      padding: 4px;
+      vertical-align: top;
+      min-height: 90px;
+      background: #fff;
+    }
+    table.calendar-grid th {
+      text-align: center;
+      background: #eef2ff;
+      color: #475569;
+      font-size: 13px;
+    }
+    td.day-cell {
+      cursor: pointer;
+      transition: background 0.2s ease, border-color 0.2s ease;
+    }
+    td.day-cell:hover {
+      background: #eff6ff;
+    }
+    td.day-cell.selected {
+      border: 2px solid #2563eb;
+      background: #e0ecff;
+    }
+    td.day-cell .day-number {
+      font-weight: 600;
+      color: #0f172a;
+      margin-bottom: 4px;
+    }
+    .cell-entries {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .cell-entries li {
+      font-size: 11px;
+      display: flex;
+      justify-content: space-between;
+      gap: 6px;
+      padding: 2px 4px;
+      background: #f1f5f9;
+      border-radius: 6px;
+      color: #0f172a;
+    }
+    .entry-card h2 {
+      margin-top: 0;
+      margin-bottom: 6px;
+      font-size: 18px;
+    }
+    .selected-date-label {
+      font-weight: 600;
+      color: #1d4ed8;
+      margin-bottom: 12px;
+    }
+    .entry-form {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .entry-form label {
+      font-size: 13px;
+      color: #475569;
+    }
+    .entry-form input,
+    .entry-form select {
+      width: 100%;
+      margin-top: 4px;
+      padding: 8px 10px;
+      border: 1px solid #cbd5f5;
+      border-radius: 10px;
+      font-size: 14px;
+    }
+    .entry-form button {
+      border: none;
+      border-radius: 999px;
+      padding: 10px 16px;
+      font-size: 14px;
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+    #addEntryButton {
+      background: #16a34a;
+      color: #fff;
+      font-weight: 600;
+    }
+    #addEntryButton:hover {
+      background: #15803d;
+    }
+    #clearDayButton {
+      background: #e2e8f0;
+      color: #0f172a;
+    }
+    #clearDayButton:hover {
+      background: #cbd5f5;
+    }
+    .entry-list ul {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: 320px;
+      overflow-y: auto;
+    }
+    .entry-item {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      padding: 8px;
+      border-radius: 10px;
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      align-items: center;
+      font-size: 14px;
+    }
+    .entry-item .entry-meta {
+      display: flex;
+      flex-direction: column;
+    }
+    .entry-item .entry-category {
+      font-size: 12px;
+      color: #475569;
+    }
+    .entry-item .entry-label {
+      font-weight: 600;
+    }
+    .entry-item .entry-value {
+      font-weight: 600;
+      color: #0f172a;
+    }
+    .empty-message {
+      color: #94a3b8;
+      font-size: 13px;
+      text-align: center;
+      padding: 16px 0;
+    }
+    .legend {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      font-size: 12px;
+      color: #475569;
+      margin-top: 8px;
+    }
+    .legend span {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: #f1f5f9;
+      padding: 2px 8px;
+      border-radius: 999px;
+    }
+    .cell-summary-badge {
+      font-size: 10px;
+      color: #475569;
+      background: #dbeafe;
+      border-radius: 999px;
+      padding: 0 6px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>家計簿 & カロリーカレンダー</h1>
+    <p class="page-lead">レシートの金額や摂取カロリーなど、日々の記録をカレンダーセルにラベルと値の組み合わせで蓄積できます。</p>
+  </header>
+
+  <section class="control-panel">
+    <label>
+      年
+      <input type="number" id="yearInput" min="1900" max="9999">
+    </label>
+    <label>
+      月
+      <select id="monthInput"></select>
+    </label>
+    <label>
+      週の開始曜日
+      <select id="startWeekdayInput">
+        <option value="0">日曜日</option>
+        <option value="1">月曜日</option>
+      </select>
+    </label>
+    <button id="buildButton">カレンダーを更新</button>
+  </section>
+
+  <div class="layout">
+    <section class="calendar-card">
+      <div class="calendar-header">
+        <span id="calendarTitle"></span>
+        <div class="legend">
+          <span>🧾 レシート</span>
+          <span>🔥 カロリー</span>
+          <span>✏️ メモ</span>
+        </div>
+      </div>
+      <table class="calendar-grid">
+        <thead>
+          <tr id="weekdayHeader"></tr>
+        </thead>
+        <tbody id="calendarBody"></tbody>
+      </table>
+    </section>
+
+    <section class="entry-card">
+      <h2>日別データ</h2>
+      <div class="selected-date-label" id="selectedDateLabel">日付を選択してください</div>
+      <div class="entry-form">
+        <label>
+          カテゴリ
+          <select id="entryType">
+            <option value="receipt">レシート</option>
+            <option value="calorie">カロリー</option>
+            <option value="memo">メモ</option>
+          </select>
+        </label>
+        <label>
+          ラベル
+          <input type="text" id="entryLabel" placeholder="例: 昼食 / スーパー">
+        </label>
+        <label>
+          値
+          <input type="number" id="entryValue" placeholder="例: 1200">
+        </label>
+        <button id="addEntryButton">この日に追加</button>
+        <button id="clearDayButton" type="button">この日のデータをリセット</button>
+      </div>
+      <div class="entry-list">
+        <h3>登録済みデータ</h3>
+        <ul id="entryList"></ul>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    (function () {
+      "use strict";
+
+      const WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"];
+      const ENTRY_META = {
+        receipt: { label: "レシート", unit: "円", icon: "🧾" },
+        calorie: { label: "カロリー", unit: "kcal", icon: "🔥" },
+        memo: { label: "メモ", unit: "", icon: "✏️" }
+      };
+      const STORAGE_KEY = "kakeibo-calendar-entries";
+
+      const state = {
+        year: 0,
+        month: 0,
+        startWeekday: 0,
+        selectedDay: null,
+        entries: {}
+      };
+
+      const yearInput = document.getElementById("yearInput");
+      const monthInput = document.getElementById("monthInput");
+      const startWeekdayInput = document.getElementById("startWeekdayInput");
+      const buildButton = document.getElementById("buildButton");
+      const weekdayHeader = document.getElementById("weekdayHeader");
+      const calendarBody = document.getElementById("calendarBody");
+      const calendarTitle = document.getElementById("calendarTitle");
+      const selectedDateLabel = document.getElementById("selectedDateLabel");
+      const entryList = document.getElementById("entryList");
+      const entryType = document.getElementById("entryType");
+      const entryLabel = document.getElementById("entryLabel");
+      const entryValue = document.getElementById("entryValue");
+      const addEntryButton = document.getElementById("addEntryButton");
+      const clearDayButton = document.getElementById("clearDayButton");
+
+      function initSelectors() {
+        const now = new Date();
+        for (let m = 1; m <= 12; m++) {
+          const option = document.createElement("option");
+          option.value = m;
+          option.textContent = m + "月";
+          monthInput.appendChild(option);
+        }
+        state.year = now.getFullYear();
+        state.month = now.getMonth() + 1;
+        state.startWeekday = 0;
+        state.selectedDay = now.getDate();
+        yearInput.value = state.year;
+        monthInput.value = String(state.month);
+        startWeekdayInput.value = String(state.startWeekday);
+      }
+
+      function loadEntries() {
+        try {
+          const raw = localStorage.getItem(STORAGE_KEY);
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (parsed && typeof parsed === "object") {
+              state.entries = parsed;
+            }
+          }
+        } catch (error) {
+          console.warn("Failed to load entries", error);
+          state.entries = {};
+        }
+      }
+
+      function saveEntries() {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(state.entries));
+        } catch (error) {
+          console.warn("Failed to save entries", error);
+        }
+      }
+
+      function formatDateKey(year, month, day) {
+        return [year, month.toString().padStart(2, "0"), day.toString().padStart(2, "0")].join("-");
+      }
+
+      function getEntriesForDay(year, month, day) {
+        const key = formatDateKey(year, month, day);
+        return state.entries[key] || [];
+      }
+
+      function setEntriesForDay(year, month, day, entries) {
+        const key = formatDateKey(year, month, day);
+        if (!entries || entries.length === 0) {
+          delete state.entries[key];
+        } else {
+          state.entries[key] = entries;
+        }
+        saveEntries();
+      }
+
+      function buildWeekdayHeader() {
+        weekdayHeader.innerHTML = "";
+        const start = Number(state.startWeekday) || 0;
+        for (let i = 0; i < 7; i++) {
+          const weekdayIndex = (start + i) % 7;
+          const th = document.createElement("th");
+          th.textContent = WEEKDAYS[weekdayIndex];
+          weekdayHeader.appendChild(th);
+        }
+      }
+
+      function buildCalendar() {
+        state.year = Number(yearInput.value) || state.year;
+        state.month = Number(monthInput.value) || state.month;
+        state.startWeekday = Number(startWeekdayInput.value) || 0;
+
+        const firstDay = new Date(state.year, state.month - 1, 1);
+        const daysInMonth = new Date(state.year, state.month, 0).getDate();
+        const leadingBlank = (firstDay.getDay() - state.startWeekday + 7) % 7;
+
+        calendarTitle.textContent = state.year + "年 " + state.month + "月";
+        buildWeekdayHeader();
+
+        calendarBody.innerHTML = "";
+        const totalCells = Math.ceil((leadingBlank + daysInMonth) / 7) * 7;
+        let currentDay = 1;
+
+        for (let row = 0; row < totalCells / 7; row++) {
+          const tr = document.createElement("tr");
+          for (let col = 0; col < 7; col++) {
+            const cellIndex = row * 7 + col;
+            const td = document.createElement("td");
+            if (cellIndex < leadingBlank || currentDay > daysInMonth) {
+              td.classList.add("empty-cell");
+              tr.appendChild(td);
+              continue;
+            }
+            td.classList.add("day-cell");
+            td.dataset.day = String(currentDay);
+            const numberEl = document.createElement("div");
+            numberEl.className = "day-number";
+            numberEl.textContent = currentDay;
+            const listEl = document.createElement("ul");
+            listEl.className = "cell-entries";
+            td.appendChild(numberEl);
+            td.appendChild(listEl);
+            td.addEventListener("click", function () {
+              selectDay(currentDay);
+            });
+            renderCellEntries(currentDay, listEl);
+            if (state.selectedDay === currentDay) {
+              td.classList.add("selected");
+            }
+            currentDay += 1;
+            tr.appendChild(td);
+          }
+          calendarBody.appendChild(tr);
+        }
+
+        if (!state.selectedDay || state.selectedDay > daysInMonth) {
+          state.selectedDay = null;
+        }
+        updateSelectedDateLabel();
+        renderEntryList();
+      }
+
+      function renderCellEntries(day, container) {
+        const entries = getEntriesForDay(state.year, state.month, day);
+        const target = container || document.querySelector(
+          '.day-cell[data-day="' + day + '"] .cell-entries'
+        );
+        if (!target) {
+          return;
+        }
+        target.innerHTML = "";
+        if (!entries || entries.length === 0) {
+          return;
+        }
+        const limit = 3;
+        entries.slice(0, limit).forEach(function (entry) {
+          const li = document.createElement("li");
+          const meta = ENTRY_META[entry.type] || ENTRY_META.memo;
+          const label = entry.label || meta.label;
+          const unit = meta.unit || "";
+          const valueText = typeof entry.value === "number" && !Number.isNaN(entry.value)
+            ? entry.value.toLocaleString() + unit
+            : (entry.value || "");
+          li.innerHTML = '<span class="cell-summary-badge">' + meta.icon + '</span>' +
+            '<span>' + label + '：' + valueText + '</span>';
+          target.appendChild(li);
+        });
+        if (entries.length > limit) {
+          const more = document.createElement("li");
+          more.textContent = "ほか" + (entries.length - limit) + "件";
+          target.appendChild(more);
+        }
+      }
+
+      function selectDay(day) {
+        if (!day) {
+          return;
+        }
+        const previous = document.querySelector("td.day-cell.selected");
+        if (previous) {
+          previous.classList.remove("selected");
+        }
+        const target = document.querySelector('td.day-cell[data-day="' + day + '"]');
+        if (target) {
+          target.classList.add("selected");
+        }
+        state.selectedDay = day;
+        updateSelectedDateLabel();
+        renderEntryList();
+      }
+
+      function updateSelectedDateLabel() {
+        if (!state.selectedDay) {
+          selectedDateLabel.textContent = "日付を選択してください";
+          return;
+        }
+        selectedDateLabel.textContent = state.year + "年" + state.month + "月" + state.selectedDay + "日のデータ";
+      }
+
+      function renderEntryList() {
+        entryList.innerHTML = "";
+        if (!state.selectedDay) {
+          entryList.innerHTML = '<li class="empty-message">日付を選択すると、登録済みデータが表示されます。</li>';
+          return;
+        }
+        const entries = getEntriesForDay(state.year, state.month, state.selectedDay);
+        if (!entries || entries.length === 0) {
+          entryList.innerHTML = '<li class="empty-message">まだデータがありません。ラベルと値を入力して追加してください。</li>';
+          return;
+        }
+        entries.forEach(function (entry) {
+          const meta = ENTRY_META[entry.type] || ENTRY_META.memo;
+          const li = document.createElement("li");
+          li.className = "entry-item";
+          const left = document.createElement("div");
+          left.className = "entry-meta";
+          const category = document.createElement("span");
+          category.className = "entry-category";
+          category.textContent = meta.icon + " " + meta.label;
+          const label = document.createElement("span");
+          label.className = "entry-label";
+          label.textContent = entry.label || "(ラベルなし)";
+          left.appendChild(category);
+          left.appendChild(label);
+          const value = document.createElement("span");
+          value.className = "entry-value";
+          const unit = meta.unit || "";
+          if (typeof entry.value === "number" && !Number.isNaN(entry.value)) {
+            value.textContent = entry.value.toLocaleString() + unit;
+          } else if (entry.value) {
+            value.textContent = entry.value + unit;
+          } else {
+            value.textContent = "-";
+          }
+          li.appendChild(left);
+          li.appendChild(value);
+          entryList.appendChild(li);
+        });
+      }
+
+      function handleAddEntry() {
+        if (!state.selectedDay) {
+          alert("カレンダーセルをクリックして日付を選択してください。");
+          return;
+        }
+        const type = entryType.value;
+        const label = entryLabel.value.trim();
+        const rawValue = entryValue.value.trim();
+        if (!label && !rawValue) {
+          alert("ラベルか値のどちらかは入力してください。");
+          return;
+        }
+        let numericValue = Number(rawValue);
+        if (rawValue === "" || Number.isNaN(numericValue)) {
+          numericValue = rawValue;
+        }
+        const entries = getEntriesForDay(state.year, state.month, state.selectedDay).slice();
+        entries.push({
+          type: type,
+          label: label,
+          value: numericValue,
+          createdAt: new Date().toISOString()
+        });
+        setEntriesForDay(state.year, state.month, state.selectedDay, entries);
+        renderCellEntries(state.selectedDay);
+        renderEntryList();
+        entryLabel.value = "";
+        entryValue.value = "";
+      }
+
+      function handleClearDay() {
+        if (!state.selectedDay) {
+          alert("リセットする日付を選択してください。");
+          return;
+        }
+        if (!confirm("この日のデータをすべて削除しますか？")) {
+          return;
+        }
+        setEntriesForDay(state.year, state.month, state.selectedDay, []);
+        renderCellEntries(state.selectedDay);
+        renderEntryList();
+      }
+
+      buildButton.addEventListener("click", buildCalendar);
+      addEntryButton.addEventListener("click", handleAddEntry);
+      clearDayButton.addEventListener("click", handleClearDay);
+      startWeekdayInput.addEventListener("change", buildCalendar);
+      yearInput.addEventListener("change", buildCalendar);
+      monthInput.addEventListener("change", buildCalendar);
+
+      initSelectors();
+      loadEntries();
+      buildCalendar();
+      if (state.selectedDay) {
+        selectDay(state.selectedDay);
+      }
+    })();
+  </script>
+</body>
+</html>
