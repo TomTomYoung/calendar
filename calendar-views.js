@@ -27,6 +27,18 @@
       paddingX: 0,
       paddingY: 0,
       backgroundColor: "#ffffff",
+      backgroundColors: {
+        weekday: null,
+        weekend: null,
+        holiday: null,
+        nthWeekday: {
+          1: null,
+          2: null,
+          3: null,
+          4: null,
+          5: null
+        }
+      },
       border: {
         width: 1,
         style: "solid",
@@ -79,6 +91,12 @@
     }
     if (!merged.cell.border || typeof merged.cell.border !== "object") {
       merged.cell.border = clone(defaultViewOptions.cell.border);
+    }
+    if (!merged.cell.backgroundColors || typeof merged.cell.backgroundColors !== "object") {
+      merged.cell.backgroundColors = clone(defaultViewOptions.cell.backgroundColors);
+    }
+    if (!merged.cell.backgroundColors.nthWeekday || typeof merged.cell.backgroundColors.nthWeekday !== "object") {
+      merged.cell.backgroundColors.nthWeekday = clone(defaultViewOptions.cell.backgroundColors.nthWeekday);
     }
     if (!merged.labels || typeof merged.labels !== "object") {
       merged.labels = clone(defaultViewOptions.labels);
@@ -169,7 +187,7 @@
 
     el.style.fontFamily = typography.fontFamily;
     el.style.fontSize = typography.fontSize;
-    el.style.backgroundColor = cell.backgroundColor;
+    let backgroundColor = cell.backgroundColor;
     el.style.boxSizing = "border-box";
     el.style.borderStyle = cell.border.style;
     el.style.borderWidth = cell.border.width + "px";
@@ -186,18 +204,47 @@
     }
 
     let color = typography.weekdayTextColor;
+    const backgroundColors = cell.backgroundColors || {};
+
     if (day.weekday === 0 || day.weekday === 6) {
-      color = typography.weekendTextColor;
+      if (typography.weekendTextColor !== undefined && typography.weekendTextColor !== null) {
+        color = typography.weekendTextColor;
+      }
+      if (backgroundColors.weekend !== undefined && backgroundColors.weekend !== null) {
+        backgroundColor = backgroundColors.weekend;
+      }
     }
+
     if (day.isHoliday) {
-      color = typography.holidayTextColor;
+      if (typography.holidayTextColor !== undefined && typography.holidayTextColor !== null) {
+        color = typography.holidayTextColor;
+      }
+      if (backgroundColors.holiday !== undefined && backgroundColors.holiday !== null) {
+        backgroundColor = backgroundColors.holiday;
+      }
     }
+
     const nth = day.weekdayIndexInMonth;
     if (nth && typography.nthWeekdayTextColor && typography.nthWeekdayTextColor[nth]) {
       color = typography.nthWeekdayTextColor[nth];
     }
+    if (nth && backgroundColors.nthWeekday && backgroundColors.nthWeekday[nth] !== undefined && backgroundColors.nthWeekday[nth] !== null) {
+      backgroundColor = backgroundColors.nthWeekday[nth];
+    }
 
     el.style.color = color;
+    el.style.backgroundColor = backgroundColor;
+  }
+
+  function getDayNumberLabel(dayNumber, options) {
+    const opt = ensureMerged(options);
+    const labels = opt.labels.dayNumberLabels;
+    const index = Math.max(1, Math.min(31, dayNumber)) - 1;
+    const label = labels[index];
+    if (label === undefined || label === null) {
+      return String(dayNumber);
+    }
+    return String(label);
   }
 
   function getDayNumberLabel(dayNumber, options) {

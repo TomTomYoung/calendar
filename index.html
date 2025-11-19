@@ -245,6 +245,18 @@
           paddingX: 0,
           paddingY: 0,
           backgroundColor: "#ffffff",
+          backgroundColors: {
+            weekday: null,
+            weekend: null,
+            holiday: null,
+            nthWeekday: {
+              1: null,
+              2: null,
+              3: null,
+              4: null,
+              5: null
+            }
+          },
           border: {
             width: 1,
             style: "solid",
@@ -271,6 +283,10 @@
         { path: "cell.paddingX", description: "セル左右の余白 (px)" },
         { path: "cell.paddingY", description: "セル上下の余白 (px)" },
         { path: "cell.backgroundColor", description: "セル背景色" },
+        { path: "cell.backgroundColors.weekday", description: "平日のセル背景色 (null で共通色)" },
+        { path: "cell.backgroundColors.weekend", description: "土日のセル背景色" },
+        { path: "cell.backgroundColors.holiday", description: "祝日のセル背景色" },
+        { path: "cell.backgroundColors.nthWeekday['4']", description: "第4◯曜日のみ背景色を変える例" },
         { path: "cell.border.width", description: "セル境界線の太さ (px)" },
         { path: "cell.border.color", description: "セル境界線の色" },
         { path: "cell.border.style", description: "セル境界線のスタイル (solid, dashed など)" },
