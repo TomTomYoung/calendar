@@ -22,9 +22,36 @@
   };
 
   function mergeOptions(options) {
+    if (options && options.__calendarViewMerged) {
+      return options;
+    }
     const merged = Object.assign({}, defaultViewOptions, options || {});
     merged.colorNthWeekday = Object.assign({}, defaultViewOptions.colorNthWeekday, (options && options.colorNthWeekday) || {});
+    Object.defineProperty(merged, "__calendarViewMerged", {
+      value: true,
+      enumerable: false,
+      configurable: false,
+      writable: false
+    });
     return merged;
+  }
+
+  function applyWeekdayLabelStyle(el, orientation, options) {
+    const opt = mergeOptions(options);
+
+    el.style.fontFamily = opt.fontFamily;
+    el.style.fontSize = opt.fontSize;
+    el.style.boxSizing = "border-box";
+
+    if (orientation === "row") {
+      el.style.height = opt.cellHeight + "px";
+      el.style.minHeight = opt.cellHeight + "px";
+      el.style.maxHeight = opt.cellHeight + "px";
+    } else {
+      el.style.width = opt.cellWidth + "px";
+      el.style.minWidth = opt.cellWidth + "px";
+      el.style.maxWidth = opt.cellWidth + "px";
+    }
   }
 
   function applyCellStyle(el, day, options) {
@@ -67,12 +94,15 @@
       monthWrapper.appendChild(title);
 
       const table = document.createElement("table");
+      const mergedOptions = mergeOptions(options);
+      table.style.width = (mergedOptions.cellWidth * 7) + "px";
 
       const thead = document.createElement("thead");
       const trHead = document.createElement("tr");
       JP_WEEKDAY_LABELS.forEach(function (label) {
         const th = document.createElement("th");
         th.textContent = label;
+        applyWeekdayLabelStyle(th, "column", mergedOptions);
         trHead.appendChild(th);
       });
       thead.appendChild(trHead);
@@ -97,7 +127,7 @@
         const td = document.createElement("td");
         td.textContent = day.date;
 
-        applyCellStyle(td, day, options);
+        applyCellStyle(td, day, mergedOptions);
 
         td.title = "曜日: " + day.weekdayName +
                    (day.weekdayIndexInMonth ? " / 第" + day.weekdayIndexInMonth + "週" : "") +
