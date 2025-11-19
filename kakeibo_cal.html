@@ -141,48 +141,64 @@
     }
     .entry-card h2 {
       margin-top: 0;
-      margin-bottom: 6px;
+      margin-bottom: 4px;
       font-size: 18px;
     }
     .selected-date-label {
       font-weight: 600;
       color: #1d4ed8;
-      margin-bottom: 12px;
+      margin-bottom: 8px;
     }
-    .entry-form {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      margin-bottom: 12px;
-    }
-    .entry-form label {
+    .json-instruction {
       font-size: 13px;
       color: #475569;
-    }
-    .entry-form input,
-    .entry-form select {
-      width: 100%;
-      margin-top: 4px;
-      padding: 8px 10px;
-      border: 1px solid #cbd5f5;
+      background: #f1f5f9;
+      padding: 8px 12px;
       border-radius: 10px;
-      font-size: 14px;
+      margin-bottom: 12px;
     }
-    .entry-form button {
+    .json-editor textarea {
+      width: 100%;
+      min-height: 220px;
+      resize: vertical;
+      padding: 10px 12px;
+      border: 1px solid #cbd5f5;
+      border-radius: 12px;
+      font-family: "JetBrains Mono", "Roboto Mono", Consolas, monospace;
+      font-size: 13px;
+      line-height: 1.5;
+      background: #0f172a;
+      color: #e2e8f0;
+    }
+    .json-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 10px 0;
+    }
+    .json-actions button {
       border: none;
       border-radius: 999px;
-      padding: 10px 16px;
-      font-size: 14px;
+      padding: 8px 16px;
+      font-size: 13px;
       cursor: pointer;
       transition: background 0.2s ease;
     }
-    #addEntryButton {
+    #saveJsonButton {
       background: #16a34a;
       color: #fff;
       font-weight: 600;
     }
-    #addEntryButton:hover {
+    #saveJsonButton:hover {
       background: #15803d;
+    }
+    #formatJsonButton {
+      background: #dbeafe;
+      color: #1d4ed8;
+      font-weight: 600;
+    }
+    #formatJsonButton:hover {
+      background: #bfdbfe;
     }
     #clearDayButton {
       background: #e2e8f0;
@@ -191,47 +207,33 @@
     #clearDayButton:hover {
       background: #cbd5f5;
     }
-    .entry-list ul {
-      list-style: none;
-      padding: 0;
-      margin: 0;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      max-height: 320px;
-      overflow-y: auto;
-    }
-    .entry-item {
-      background: #f8fafc;
-      border: 1px solid #e2e8f0;
-      padding: 8px;
-      border-radius: 10px;
-      display: flex;
-      justify-content: space-between;
-      gap: 8px;
-      align-items: center;
-      font-size: 14px;
-    }
-    .entry-item .entry-meta {
-      display: flex;
-      flex-direction: column;
-    }
-    .entry-item .entry-category {
+    .json-status {
       font-size: 12px;
       color: #475569;
+      margin-bottom: 12px;
     }
-    .entry-item .entry-label {
-      font-weight: 600;
+    .json-status.error {
+      color: #dc2626;
     }
-    .entry-item .entry-value {
-      font-weight: 600;
+    .json-preview {
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 12px;
+      max-height: 260px;
+      overflow: auto;
+    }
+    .json-preview h3 {
+      margin: 0 0 8px;
+      font-size: 14px;
+    }
+    .json-preview pre {
+      margin: 0;
+      white-space: pre-wrap;
+      word-break: break-all;
+      font-family: "JetBrains Mono", "Roboto Mono", Consolas, monospace;
+      font-size: 12px;
       color: #0f172a;
-    }
-    .empty-message {
-      color: #94a3b8;
-      font-size: 13px;
-      text-align: center;
-      padding: 16px 0;
     }
     .legend {
       display: flex;
@@ -261,7 +263,7 @@
 <body>
   <header>
     <h1>家計簿 & カロリーカレンダー</h1>
-    <p class="page-lead">レシートの金額や摂取カロリーなど、日々の記録をカレンダーセルにラベルと値の組み合わせで蓄積できます。</p>
+    <p class="page-lead">セルを選択して、その日のJSONを直接編集できます。レシートやカロリー、自由メモを好きな構造で管理してください。</p>
   </header>
 
   <section class="control-panel">
@@ -302,31 +304,23 @@
     </section>
 
     <section class="entry-card">
-      <h2>日別データ</h2>
+      <h2>日別JSON</h2>
       <div class="selected-date-label" id="selectedDateLabel">日付を選択してください</div>
-      <div class="entry-form">
-        <label>
-          カテゴリ
-          <select id="entryType">
-            <option value="receipt">レシート</option>
-            <option value="calorie">カロリー</option>
-            <option value="memo">メモ</option>
-          </select>
-        </label>
-        <label>
-          ラベル
-          <input type="text" id="entryLabel" placeholder="例: 昼食 / スーパー">
-        </label>
-        <label>
-          値
-          <input type="number" id="entryValue" placeholder="例: 1200">
-        </label>
-        <button id="addEntryButton">この日に追加</button>
-        <button id="clearDayButton" type="button">この日のデータをリセット</button>
+      <div class="json-instruction">
+        セルをクリック → JSONを編集 → 保存。配列でもオブジェクトでも自由に記述できます。整形やリセットもワンクリックです。
       </div>
-      <div class="entry-list">
-        <h3>登録済みデータ</h3>
-        <ul id="entryList"></ul>
+      <div class="json-editor">
+        <textarea id="jsonEditor" spellcheck="false" placeholder='{"receipt":[{"label":"昼食","amount":1200}],"calorie":1800,"memo":"控えめ"}'></textarea>
+      </div>
+      <div class="json-actions">
+        <button id="saveJsonButton" type="button">この日のJSONを保存</button>
+        <button id="formatJsonButton" type="button">整形して読みやすく</button>
+        <button id="clearDayButton" type="button">この日のJSONをリセット</button>
+      </div>
+      <div id="jsonStatus" class="json-status">編集する日付を選択してください。</div>
+      <div class="json-preview">
+        <h3>プレビュー</h3>
+        <pre id="jsonPreview">(なし)</pre>
       </div>
     </section>
   </div>
@@ -336,12 +330,12 @@
       "use strict";
 
       const WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"];
-      const ENTRY_META = {
-        receipt: { label: "レシート", unit: "円", icon: "🧾" },
-        calorie: { label: "カロリー", unit: "kcal", icon: "🔥" },
-        memo: { label: "メモ", unit: "", icon: "✏️" }
-      };
       const STORAGE_KEY = "kakeibo-calendar-entries";
+      const DEFAULT_JSON_TEMPLATE = JSON.stringify({
+        receipt: [{ label: "昼食", amount: 1200 }],
+        calorie: 1800,
+        memo: "控えめに"
+      }, null, 2);
 
       const state = {
         year: 0,
@@ -359,11 +353,11 @@
       const calendarBody = document.getElementById("calendarBody");
       const calendarTitle = document.getElementById("calendarTitle");
       const selectedDateLabel = document.getElementById("selectedDateLabel");
-      const entryList = document.getElementById("entryList");
-      const entryType = document.getElementById("entryType");
-      const entryLabel = document.getElementById("entryLabel");
-      const entryValue = document.getElementById("entryValue");
-      const addEntryButton = document.getElementById("addEntryButton");
+      const jsonEditor = document.getElementById("jsonEditor");
+      const saveJsonButton = document.getElementById("saveJsonButton");
+      const formatJsonButton = document.getElementById("formatJsonButton");
+      const jsonStatus = document.getElementById("jsonStatus");
+      const jsonPreview = document.getElementById("jsonPreview");
       const clearDayButton = document.getElementById("clearDayButton");
 
       function initSelectors() {
@@ -389,7 +383,13 @@
           if (raw) {
             const parsed = JSON.parse(raw);
             if (parsed && typeof parsed === "object") {
-              state.entries = parsed;
+              Object.keys(parsed).forEach(function (key) {
+                if (typeof parsed[key] === "string") {
+                  state.entries[key] = parsed[key];
+                } else {
+                  state.entries[key] = JSON.stringify(parsed[key], null, 2);
+                }
+              });
             }
           }
         } catch (error) {
@@ -410,17 +410,18 @@
         return [year, month.toString().padStart(2, "0"), day.toString().padStart(2, "0")].join("-");
       }
 
-      function getEntriesForDay(year, month, day) {
+      function getJsonStringForDay(year, month, day) {
         const key = formatDateKey(year, month, day);
-        return state.entries[key] || [];
+        return state.entries[key] || "";
       }
 
-      function setEntriesForDay(year, month, day, entries) {
+      function setJsonStringForDay(year, month, day, jsonString) {
         const key = formatDateKey(year, month, day);
-        if (!entries || entries.length === 0) {
+        const trimmed = (jsonString || "").trim();
+        if (!trimmed) {
           delete state.entries[key];
         } else {
-          state.entries[key] = entries;
+          state.entries[key] = trimmed;
         }
         saveEntries();
       }
@@ -474,7 +475,7 @@
             td.addEventListener("click", function () {
               selectDay(currentDay);
             });
-            renderCellEntries(currentDay, listEl);
+            renderCellJsonSummary(currentDay, listEl);
             if (state.selectedDay === currentDay) {
               td.classList.add("selected");
             }
@@ -488,11 +489,40 @@
           state.selectedDay = null;
         }
         updateSelectedDateLabel();
-        renderEntryList();
       }
 
-      function renderCellEntries(day, container) {
-        const entries = getEntriesForDay(state.year, state.month, day);
+      function describeValueForSummary(value) {
+        if (value === null) {
+          return "null";
+        }
+        if (Array.isArray(value)) {
+          return "配列(" + value.length + "件)";
+        }
+        if (typeof value === "object") {
+          return "オブジェクト(" + Object.keys(value).length + "項目)";
+        }
+        if (typeof value === "number") {
+          return value.toLocaleString();
+        }
+        return String(value);
+      }
+
+      function summarizeJsonForCell(value) {
+        if (value === null || typeof value !== "object") {
+          return [describeValueForSummary(value)];
+        }
+        const entries = Array.isArray(value)
+          ? value.map(function (item, index) {
+            return "[" + index + "] " + describeValueForSummary(item);
+          })
+          : Object.keys(value).map(function (key) {
+            return key + "：" + describeValueForSummary(value[key]);
+          });
+        return entries;
+      }
+
+      function renderCellJsonSummary(day, container) {
+        const jsonString = getJsonStringForDay(state.year, state.month, day);
         const target = container || document.querySelector(
           '.day-cell[data-day="' + day + '"] .cell-entries'
         );
@@ -500,26 +530,31 @@
           return;
         }
         target.innerHTML = "";
-        if (!entries || entries.length === 0) {
+        if (!jsonString) {
           return;
         }
-        const limit = 3;
-        entries.slice(0, limit).forEach(function (entry) {
+        try {
+          const parsed = JSON.parse(jsonString);
+          const allLines = summarizeJsonForCell(parsed);
+          allLines.slice(0, 3).forEach(function (line) {
+            const li = document.createElement("li");
+            li.textContent = line;
+            target.appendChild(li);
+          });
+          if (allLines.length > 3) {
+            const more = document.createElement("li");
+            more.textContent = "…ほか" + (allLines.length - 3) + "件";
+            target.appendChild(more);
+          }
+          if (allLines.length === 0) {
+            const empty = document.createElement("li");
+            empty.textContent = "JSONあり (表示できる項目なし)";
+            target.appendChild(empty);
+          }
+        } catch (error) {
           const li = document.createElement("li");
-          const meta = ENTRY_META[entry.type] || ENTRY_META.memo;
-          const label = entry.label || meta.label;
-          const unit = meta.unit || "";
-          const valueText = typeof entry.value === "number" && !Number.isNaN(entry.value)
-            ? entry.value.toLocaleString() + unit
-            : (entry.value || "");
-          li.innerHTML = '<span class="cell-summary-badge">' + meta.icon + '</span>' +
-            '<span>' + label + '：' + valueText + '</span>';
+          li.textContent = "JSONエラー";
           target.appendChild(li);
-        });
-        if (entries.length > limit) {
-          const more = document.createElement("li");
-          more.textContent = "ほか" + (entries.length - limit) + "件";
-          target.appendChild(more);
         }
       }
 
@@ -537,7 +572,7 @@
         }
         state.selectedDay = day;
         updateSelectedDateLabel();
-        renderEntryList();
+        refreshJsonEditor();
       }
 
       function updateSelectedDateLabel() {
@@ -548,75 +583,94 @@
         selectedDateLabel.textContent = state.year + "年" + state.month + "月" + state.selectedDay + "日のデータ";
       }
 
-      function renderEntryList() {
-        entryList.innerHTML = "";
+      function refreshJsonEditor() {
+        if (!jsonEditor) {
+          return;
+        }
         if (!state.selectedDay) {
-          entryList.innerHTML = '<li class="empty-message">日付を選択すると、登録済みデータが表示されます。</li>';
+          jsonEditor.value = "";
+          jsonEditor.disabled = true;
+          jsonStatus.textContent = "日付を選択するとJSONを編集できます。";
+          jsonStatus.classList.remove("error");
+          jsonPreview.textContent = "(なし)";
           return;
         }
-        const entries = getEntriesForDay(state.year, state.month, state.selectedDay);
-        if (!entries || entries.length === 0) {
-          entryList.innerHTML = '<li class="empty-message">まだデータがありません。ラベルと値を入力して追加してください。</li>';
-          return;
-        }
-        entries.forEach(function (entry) {
-          const meta = ENTRY_META[entry.type] || ENTRY_META.memo;
-          const li = document.createElement("li");
-          li.className = "entry-item";
-          const left = document.createElement("div");
-          left.className = "entry-meta";
-          const category = document.createElement("span");
-          category.className = "entry-category";
-          category.textContent = meta.icon + " " + meta.label;
-          const label = document.createElement("span");
-          label.className = "entry-label";
-          label.textContent = entry.label || "(ラベルなし)";
-          left.appendChild(category);
-          left.appendChild(label);
-          const value = document.createElement("span");
-          value.className = "entry-value";
-          const unit = meta.unit || "";
-          if (typeof entry.value === "number" && !Number.isNaN(entry.value)) {
-            value.textContent = entry.value.toLocaleString() + unit;
-          } else if (entry.value) {
-            value.textContent = entry.value + unit;
-          } else {
-            value.textContent = "-";
-          }
-          li.appendChild(left);
-          li.appendChild(value);
-          entryList.appendChild(li);
-        });
+        jsonEditor.disabled = false;
+        const existing = getJsonStringForDay(state.year, state.month, state.selectedDay);
+        jsonEditor.value = existing || DEFAULT_JSON_TEMPLATE;
+        jsonStatus.textContent = existing ? "この日のJSONを編集できます。" : "テンプレートを編集して保存してください。";
+        jsonStatus.classList.remove("error");
+        updatePreviewFromEditor({ save: false });
       }
 
-      function handleAddEntry() {
+      function updatePreviewFromEditor(options) {
+        options = options || {};
+        if (!state.selectedDay) {
+          jsonPreview.textContent = "(なし)";
+          return;
+        }
+        const rawText = jsonEditor.value;
+        const trimmed = rawText.trim();
+        if (!trimmed) {
+          jsonPreview.textContent = "(空のJSON)";
+          jsonStatus.textContent = "空の状態で保存するとこの日のJSONは削除されます。";
+          jsonStatus.classList.remove("error");
+          if (options.save) {
+            setJsonStringForDay(state.year, state.month, state.selectedDay, "");
+            renderCellJsonSummary(state.selectedDay);
+          }
+          return;
+        }
+        try {
+          const parsed = JSON.parse(trimmed);
+          jsonPreview.textContent = JSON.stringify(parsed, null, 2);
+          jsonStatus.textContent = options.save ? "✅ JSONを保存しました" : "プレビューを更新しました";
+          jsonStatus.classList.remove("error");
+          if (options.save) {
+            setJsonStringForDay(state.year, state.month, state.selectedDay, trimmed);
+            renderCellJsonSummary(state.selectedDay);
+          }
+        } catch (error) {
+          jsonPreview.textContent = "(JSONエラー)";
+          jsonStatus.textContent = "⚠️ JSONエラー: " + error.message;
+          jsonStatus.classList.add("error");
+        }
+      }
+
+      function handleJsonInput() {
+        if (!state.selectedDay) {
+          return;
+        }
+        updatePreviewFromEditor({ save: true });
+      }
+
+      function handleSaveJson() {
         if (!state.selectedDay) {
           alert("カレンダーセルをクリックして日付を選択してください。");
           return;
         }
-        const type = entryType.value;
-        const label = entryLabel.value.trim();
-        const rawValue = entryValue.value.trim();
-        if (!label && !rawValue) {
-          alert("ラベルか値のどちらかは入力してください。");
+        updatePreviewFromEditor({ save: true });
+      }
+
+      function handleFormatJson() {
+        if (!state.selectedDay) {
+          alert("日付を選択してください。");
           return;
         }
-        let numericValue = Number(rawValue);
-        if (rawValue === "" || Number.isNaN(numericValue)) {
-          numericValue = rawValue;
+        const trimmed = jsonEditor.value.trim();
+        if (!trimmed) {
+          jsonStatus.textContent = "空のため整形対象がありません。";
+          jsonStatus.classList.remove("error");
+          return;
         }
-        const entries = getEntriesForDay(state.year, state.month, state.selectedDay).slice();
-        entries.push({
-          type: type,
-          label: label,
-          value: numericValue,
-          createdAt: new Date().toISOString()
-        });
-        setEntriesForDay(state.year, state.month, state.selectedDay, entries);
-        renderCellEntries(state.selectedDay);
-        renderEntryList();
-        entryLabel.value = "";
-        entryValue.value = "";
+        try {
+          const parsed = JSON.parse(trimmed);
+          jsonEditor.value = JSON.stringify(parsed, null, 2);
+          updatePreviewFromEditor({ save: true });
+        } catch (error) {
+          jsonStatus.textContent = "⚠️ JSONエラー: " + error.message;
+          jsonStatus.classList.add("error");
+        }
       }
 
       function handleClearDay() {
@@ -624,17 +678,22 @@
           alert("リセットする日付を選択してください。");
           return;
         }
-        if (!confirm("この日のデータをすべて削除しますか？")) {
+        if (!confirm("この日のJSONを空にしますか？")) {
           return;
         }
-        setEntriesForDay(state.year, state.month, state.selectedDay, []);
-        renderCellEntries(state.selectedDay);
-        renderEntryList();
+        setJsonStringForDay(state.year, state.month, state.selectedDay, "");
+        jsonEditor.value = DEFAULT_JSON_TEMPLATE;
+        jsonPreview.textContent = "(なし)";
+        jsonStatus.textContent = "この日のJSONを削除しました。";
+        jsonStatus.classList.remove("error");
+        renderCellJsonSummary(state.selectedDay);
       }
 
       buildButton.addEventListener("click", buildCalendar);
-      addEntryButton.addEventListener("click", handleAddEntry);
       clearDayButton.addEventListener("click", handleClearDay);
+      saveJsonButton.addEventListener("click", handleSaveJson);
+      formatJsonButton.addEventListener("click", handleFormatJson);
+      jsonEditor.addEventListener("input", handleJsonInput);
       startWeekdayInput.addEventListener("change", buildCalendar);
       yearInput.addEventListener("change", buildCalendar);
       monthInput.addEventListener("change", buildCalendar);
@@ -644,6 +703,8 @@
       buildCalendar();
       if (state.selectedDay) {
         selectDay(state.selectedDay);
+      } else {
+        refreshJsonEditor();
       }
     })();
   </script>
