@@ -1,32 +1,89 @@
 (function (global) {
   "use strict";
 
-  const JP_WEEKDAY_LABELS = ["日", "月", "火", "水", "木", "金", "土"];
+  const DEFAULT_WEEKDAY_LABELS = ["日", "月", "火", "水", "木", "金", "土"];
 
   const defaultViewOptions = {
-    cellWidth: 32,
-    cellHeight: 32,
-    fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
-    fontSize: "12px",
-    colorWeekday: "#000000",
-    colorWeekend: "#cc0000",
-    colorHoliday: "#cc0000",
-    colorBackground: "#ffffff",
-    colorNthWeekday: {
-      1: null,
-      2: null,
-      3: null,
-      4: null,
-      5: null
+    typography: {
+      fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+      fontSize: "12px",
+      weekdayTextColor: "#000000",
+      weekendTextColor: "#cc0000",
+      holidayTextColor: "#cc0000",
+      nthWeekdayTextColor: {
+        1: null,
+        2: null,
+        3: null,
+        4: null,
+        5: null
+      }
+    },
+    cell: {
+      width: 32,
+      height: 32,
+      paddingX: 0,
+      paddingY: 0,
+      backgroundColor: "#ffffff",
+      border: {
+        width: 1,
+        style: "solid",
+        color: "#dddddd",
+        radius: 0
+      }
+    },
+    labels: {
+      yearMonthFormat: "{year} / {month}",
+      weekdayLabels: DEFAULT_WEEKDAY_LABELS
     }
   };
+
+  function clone(obj) {
+    return JSON.parse(JSON.stringify(obj));
+  }
+
+  function mergeDeep(target, source) {
+    Object.keys(source || {}).forEach(function (key) {
+      const value = source[key];
+      if (value && typeof value === "object" && !Array.isArray(value)) {
+        if (!target[key] || typeof target[key] !== "object" || Array.isArray(target[key])) {
+          target[key] = {};
+        }
+        mergeDeep(target[key], value);
+      } else if (Array.isArray(value)) {
+        target[key] = value.slice();
+      } else {
+        target[key] = value;
+      }
+    });
+    return target;
+  }
 
   function mergeOptions(options) {
     if (options && options.__calendarViewMerged) {
       return options;
     }
-    const merged = Object.assign({}, defaultViewOptions, options || {});
-    merged.colorNthWeekday = Object.assign({}, defaultViewOptions.colorNthWeekday, (options && options.colorNthWeekday) || {});
+    const merged = clone(defaultViewOptions);
+    mergeDeep(merged, options || {});
+    if (!merged.typography || typeof merged.typography !== "object") {
+      merged.typography = clone(defaultViewOptions.typography);
+    }
+    if (!merged.typography.nthWeekdayTextColor || typeof merged.typography.nthWeekdayTextColor !== "object") {
+      merged.typography.nthWeekdayTextColor = clone(defaultViewOptions.typography.nthWeekdayTextColor);
+    }
+    if (!merged.cell || typeof merged.cell !== "object") {
+      merged.cell = clone(defaultViewOptions.cell);
+    }
+    if (!merged.cell.border || typeof merged.cell.border !== "object") {
+      merged.cell.border = clone(defaultViewOptions.cell.border);
+    }
+    if (!merged.labels || typeof merged.labels !== "object") {
+      merged.labels = clone(defaultViewOptions.labels);
+    }
+    if (!Array.isArray(merged.labels.weekdayLabels) || merged.labels.weekdayLabels.length !== 7) {
+      merged.labels.weekdayLabels = defaultViewOptions.labels.weekdayLabels.slice();
+    } else {
+      merged.labels.weekdayLabels = merged.labels.weekdayLabels.slice(0, 7);
+    }
     Object.defineProperty(merged, "__calendarViewMerged", {
       value: true,
       enumerable: false,
@@ -36,47 +93,93 @@
     return merged;
   }
 
-  function applyWeekdayLabelStyle(el, orientation, options) {
-    const opt = mergeOptions(options);
+  function ensureMerged(options) {
+    return options && options.__calendarViewMerged ? options : mergeOptions(options);
+  }
 
-    el.style.fontFamily = opt.fontFamily;
-    el.style.fontSize = opt.fontSize;
+  function formatYearMonthLabel(formatString, year, month) {
+    if (typeof formatString === "string" && formatString.length > 0) {
+      return formatString.replace(/\{year\}/g, year).replace(/\{month\}/g, month);
+    }
+    return year + " / " + month;
+  }
+
+  function applyWeekdayLabelStyle(el, orientation, options) {
+    const opt = ensureMerged(options);
+    const cell = opt.cell;
+    const typography = opt.typography;
+
+    el.style.fontFamily = typography.fontFamily;
+    el.style.fontSize = typography.fontSize;
     el.style.boxSizing = "border-box";
+    const tag = (el.tagName || "").toLowerCase();
+    if (tag === "th" || tag === "td") {
+      el.style.display = "table-cell";
+      el.style.textAlign = "center";
+      el.style.verticalAlign = "middle";
+    } else {
+      el.style.display = "flex";
+      el.style.alignItems = "center";
+      el.style.justifyContent = "center";
+      el.style.textAlign = "center";
+    }
 
     if (orientation === "row") {
-      el.style.height = opt.cellHeight + "px";
-      el.style.minHeight = opt.cellHeight + "px";
-      el.style.maxHeight = opt.cellHeight + "px";
+      el.style.height = cell.height + "px";
+      el.style.minHeight = cell.height + "px";
+      el.style.maxHeight = cell.height + "px";
     } else {
-      el.style.width = opt.cellWidth + "px";
-      el.style.minWidth = opt.cellWidth + "px";
-      el.style.maxWidth = opt.cellWidth + "px";
+      el.style.width = cell.width + "px";
+      el.style.minWidth = cell.width + "px";
+      el.style.maxWidth = cell.width + "px";
     }
+
+    el.style.padding = cell.paddingY + "px " + cell.paddingX + "px";
+    el.style.borderStyle = cell.border.style;
+    el.style.borderWidth = cell.border.width + "px";
+    el.style.borderColor = cell.border.color;
+    el.style.borderRadius = cell.border.radius + "px";
+    el.style.backgroundColor = cell.backgroundColor;
   }
 
   function applyCellStyle(el, day, options) {
-    const opt = mergeOptions(options);
+    const opt = ensureMerged(options);
+    const cell = opt.cell;
+    const typography = opt.typography;
+    const tag = (el.tagName || "").toLowerCase();
 
-    el.style.width = opt.cellWidth + "px";
-    el.style.height = opt.cellHeight + "px";
-    
-    el.style.alignItems = "center";
-    el.style.justifyContent = "center";
-    el.style.fontFamily = opt.fontFamily;
-    el.style.fontSize = opt.fontSize;
-    el.style.backgroundColor = opt.colorBackground;
+    el.style.width = cell.width + "px";
+    el.style.height = cell.height + "px";
+    el.style.padding = cell.paddingY + "px " + cell.paddingX + "px";
+
+    el.style.fontFamily = typography.fontFamily;
+    el.style.fontSize = typography.fontSize;
+    el.style.backgroundColor = cell.backgroundColor;
     el.style.boxSizing = "border-box";
+    el.style.borderStyle = cell.border.style;
+    el.style.borderWidth = cell.border.width + "px";
+    el.style.borderColor = cell.border.color;
+    el.style.borderRadius = cell.border.radius + "px";
+    el.style.textAlign = "center";
+    if (tag === "td" || tag === "th") {
+      el.style.display = "table-cell";
+      el.style.verticalAlign = "middle";
+    } else {
+      el.style.display = "flex";
+      el.style.alignItems = "center";
+      el.style.justifyContent = "center";
+    }
 
-    let color = opt.colorWeekday;
+    let color = typography.weekdayTextColor;
     if (day.weekday === 0 || day.weekday === 6) {
-      color = opt.colorWeekend;
+      color = typography.weekendTextColor;
     }
     if (day.isHoliday) {
-      color = opt.colorHoliday;
+      color = typography.holidayTextColor;
     }
     const nth = day.weekdayIndexInMonth;
-    if (opt.colorNthWeekday && opt.colorNthWeekday[nth]) {
-      color = opt.colorNthWeekday[nth];
+    if (nth && typography.nthWeekdayTextColor && typography.nthWeekdayTextColor[nth]) {
+      color = typography.nthWeekdayTextColor[nth];
     }
 
     el.style.color = color;
@@ -85,21 +188,22 @@
   function renderGrid(container, yearData, options) {
     container.innerHTML = "";
 
+    const mergedOptions = mergeOptions(options);
+
     yearData.months.forEach(function (month) {
       const monthWrapper = document.createElement("div");
       monthWrapper.className = "calendar-month-grid";
 
       const title = document.createElement("h2");
-      title.textContent = yearData.year + " / " + month.month;
+      title.textContent = formatYearMonthLabel(mergedOptions.labels.yearMonthFormat, yearData.year, month.month);
       monthWrapper.appendChild(title);
 
       const table = document.createElement("table");
-      const mergedOptions = mergeOptions(options);
-      table.style.width = (mergedOptions.cellWidth * 7) + "px";
+      table.style.width = (mergedOptions.cell.width * 7) + "px";
 
       const thead = document.createElement("thead");
       const trHead = document.createElement("tr");
-      JP_WEEKDAY_LABELS.forEach(function (label) {
+      mergedOptions.labels.weekdayLabels.forEach(function (label) {
         const th = document.createElement("th");
         th.textContent = label;
         applyWeekdayLabelStyle(th, "column", mergedOptions);
@@ -153,12 +257,14 @@
   function renderRow(container, yearData, options) {
     container.innerHTML = "";
 
+    const mergedOptions = mergeOptions(options);
+
     yearData.months.forEach(function (month) {
       const row = document.createElement("div");
       row.className = "calendar-row-month";
 
       const label = document.createElement("span");
-      label.textContent = yearData.year + "/" + month.month;
+      label.textContent = formatYearMonthLabel(mergedOptions.labels.yearMonthFormat, yearData.year, month.month);
       row.appendChild(label);
 
       const daysWrapper = document.createElement("div");
@@ -168,7 +274,7 @@
         const cell = document.createElement("div");
         cell.className = "calendar-row-cell";
         cell.textContent = day.date;
-        applyCellStyle(cell, day, options);
+        applyCellStyle(cell, day, mergedOptions);
 
         cell.title = "曜日: " + day.weekdayName +
                      (day.weekdayIndexInMonth ? " / 第" + day.weekdayIndexInMonth + "週" : "") +
@@ -188,19 +294,21 @@
     const wrapper = document.createElement("div");
     wrapper.className = "calendar-column-wrapper";
 
+    const mergedOptions = mergeOptions(options);
+
     yearData.months.forEach(function (month) {
       const col = document.createElement("div");
       col.className = "calendar-column-month";
 
       const label = document.createElement("div");
-      label.textContent = yearData.year + "/" + month.month;
+      label.textContent = formatYearMonthLabel(mergedOptions.labels.yearMonthFormat, yearData.year, month.month);
       col.appendChild(label);
 
       month.days.forEach(function (day) {
         const cell = document.createElement("div");
         cell.className = "calendar-column-cell";
         cell.textContent = day.date;
-        applyCellStyle(cell, day, options);
+        applyCellStyle(cell, day, mergedOptions);
 
         cell.title = "曜日: " + day.weekdayName +
                      (day.weekdayIndexInMonth ? " / 第" + day.weekdayIndexInMonth + "週" : "") +
