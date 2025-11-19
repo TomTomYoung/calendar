@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>カレンダー生成アプリ</title>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      margin: 16px;
+      font-size: 14px;
+    }
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 12px;
+      align-items: center;
+    }
+    .controls label {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    #calendarContainer {
+      margin-top: 12px;
+    }
+    .calendar-month-grid {
+      display: inline-block;
+      margin: 8px;
+      border: 1px solid #ccc;
+      padding: 4px 8px 8px 8px;
+    }
+    .calendar-month-grid h2 {
+      font-size: 14px;
+      margin: 4px 0;
+      text-align: center;
+    }
+    .calendar-month-grid table {
+      border-collapse: collapse;
+      width: 100%;
+      table-layout: fixed;
+      font-size: 12px;
+    }
+    .calendar-month-grid th,
+    .calendar-month-grid td {
+      border: 1px solid #ddd;
+      height: 28px;
+      text-align: center;
+      padding: 0;
+    }
+    .calendar-row-month {
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .calendar-row-month > span {
+      min-width: 72px;
+    }
+    .calendar-row-days {
+      display: flex;
+      gap: 2px;
+      flex-wrap: wrap;
+    }
+    .calendar-row-cell {
+      border: 1px solid #ddd;
+      min-width: 24px;
+      min-height: 24px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .calendar-column-wrapper {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+    }
+    .calendar-column-month {
+      border: 1px solid #ccc;
+      padding: 4px;
+      min-width: 60px;
+      font-size: 12px;
+    }
+    .calendar-column-month > div:first-child {
+      text-align: center;
+      margin-bottom: 4px;
+      font-weight: bold;
+    }
+    .calendar-column-cell {
+      border: 1px solid #ddd;
+      min-height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #exportOutput {
+      width: 100%;
+      height: 200px;
+      margin-top: 12px;
+      font-family: "Consolas", "Menlo", "Monaco", monospace;
+      white-space: pre;
+    }
+  </style>
+</head>
+<body>
+  <div class="controls">
+    <label>
+      年:
+      <input id="yearInput" type="number" value="2025" min="1" step="1">
+    </label>
+    <label>
+      アルゴリズム:
+      <select id="algorithmSelect">
+        <option value="sakamoto">Sakamoto</option>
+        <option value="zeller">Zeller</option>
+        <option value="dateApi">Date API</option>
+      </select>
+    </label>
+    <label>
+      ビュー:
+      <select id="viewSelect">
+        <option value="grid">グリッド（月間カレンダー）</option>
+        <option value="row">行ビュー（月ごと横一列）</option>
+        <option value="column">列ビュー（月ごと縦並び）</option>
+      </select>
+    </label>
+    <button id="generateButton">生成</button>
+    <button id="exportJsonButton">JSON</button>
+    <button id="exportCsvButton">CSV</button>
+    <button id="exportYamlButton">YAML</button>
+  </div>
+
+  <div id="calendarContainer"></div>
+
+  <textarea id="exportOutput" placeholder="エクスポート結果"></textarea>
+
+  <script src="calendar-algorithms.js"></script>
+  <script src="calendar-extensions.js"></script>
+  <script src="calendar-core.js"></script>
+  <script src="calendar-views.js"></script>
+  <script src="data-export.js"></script>
+  <script>
+    (function () {
+      const yearInput = document.getElementById("yearInput");
+      const algorithmSelect = document.getElementById("algorithmSelect");
+      const viewSelect = document.getElementById("viewSelect");
+      const generateButton = document.getElementById("generateButton");
+      const exportJsonButton = document.getElementById("exportJsonButton");
+      const exportCsvButton = document.getElementById("exportCsvButton");
+      const exportYamlButton = document.getElementById("exportYamlButton");
+      const calendarContainer = document.getElementById("calendarContainer");
+      const exportOutput = document.getElementById("exportOutput");
+
+      let currentYearData = null;
+
+      function render() {
+        const year = parseInt(yearInput.value, 10);
+        if (!Number.isFinite(year) || year < 1) {
+          alert("正しい西暦年を入力してください。");
+          return;
+        }
+
+        CalendarAlgorithmManager.setCalendarAlgorithm(algorithmSelect.value);
+        currentYearData = CalendarCore.buildYearData(year);
+
+        calendarContainer.innerHTML = "";
+
+        const view = viewSelect.value;
+        const viewOptions = {
+          cellWidth: 28,
+          cellHeight: 24,
+          fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+          fontSize: "11px",
+          colorWeekday: "#000",
+          colorWeekend: "#c00",
+          colorHoliday: "#c00",
+          colorBackground: "#fff",
+          colorNthWeekday: {
+            1: null,
+            2: null,
+            3: null,
+            4: "#0044cc", // 第4曜日を青で強調サンプル
+            5: "#008800"  // 第5曜日を緑で強調サンプル
+          }
+        };
+
+        if (view === "grid") {
+          CalendarViews.renderGrid(calendarContainer, currentYearData, viewOptions);
+        } else if (view === "row") {
+          CalendarViews.renderRow(calendarContainer, currentYearData, viewOptions);
+        } else if (view === "column") {
+          CalendarViews.renderColumn(calendarContainer, currentYearData, viewOptions);
+        }
+      }
+
+      generateButton.addEventListener("click", render);
+
+      exportJsonButton.addEventListener("click", function () {
+        if (!currentYearData) render();
+        exportOutput.value = DataExport.toJSON(currentYearData);
+      });
+
+      exportCsvButton.addEventListener("click", function () {
+        if (!currentYearData) render();
+        exportOutput.value = DataExport.toCSV(currentYearData);
+      });
+
+      exportYamlButton.addEventListener("click", function () {
+        if (!currentYearData) render();
+        exportOutput.value = DataExport.toYAML(currentYearData);
+      });
+
+      render();
+    })();
+  </script>
+</body>
+</html>
