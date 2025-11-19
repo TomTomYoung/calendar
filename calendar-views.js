@@ -2,6 +2,9 @@
   "use strict";
 
   const DEFAULT_WEEKDAY_LABELS = ["日", "月", "火", "水", "木", "金", "土"];
+  const DEFAULT_DAY_NUMBER_LABELS = Array.from({ length: 31 }, function (_, index) {
+    return String(index + 1);
+  });
 
   const defaultViewOptions = {
     typography: {
@@ -33,7 +36,8 @@
     },
     labels: {
       yearMonthFormat: "{year} / {month}",
-      weekdayLabels: DEFAULT_WEEKDAY_LABELS
+      weekdayLabels: DEFAULT_WEEKDAY_LABELS,
+      dayNumberLabels: DEFAULT_DAY_NUMBER_LABELS
     }
   };
 
@@ -83,6 +87,17 @@
       merged.labels.weekdayLabels = defaultViewOptions.labels.weekdayLabels.slice();
     } else {
       merged.labels.weekdayLabels = merged.labels.weekdayLabels.slice(0, 7);
+    }
+    if (!Array.isArray(merged.labels.dayNumberLabels)) {
+      merged.labels.dayNumberLabels = defaultViewOptions.labels.dayNumberLabels.slice();
+    } else {
+      const filled = defaultViewOptions.labels.dayNumberLabels.slice();
+      merged.labels.dayNumberLabels.forEach(function (value, index) {
+        if (index < 31 && value !== undefined && value !== null) {
+          filled[index] = String(value);
+        }
+      });
+      merged.labels.dayNumberLabels = filled;
     }
     Object.defineProperty(merged, "__calendarViewMerged", {
       value: true,
@@ -185,6 +200,17 @@
     el.style.color = color;
   }
 
+  function getDayNumberLabel(dayNumber, options) {
+    const opt = ensureMerged(options);
+    const labels = opt.labels.dayNumberLabels;
+    const index = Math.max(1, Math.min(31, dayNumber)) - 1;
+    const label = labels[index];
+    if (label === undefined || label === null) {
+      return String(dayNumber);
+    }
+    return String(label);
+  }
+
   function renderGrid(container, yearData, options) {
     container.innerHTML = "";
 
@@ -230,7 +256,7 @@
           tr = document.createElement("tr");
         }
         const td = document.createElement("td");
-        td.textContent = day.date;
+        td.textContent = getDayNumberLabel(day.date, mergedOptions);
 
         applyCellStyle(td, day, mergedOptions);
 
@@ -274,7 +300,7 @@
       month.days.forEach(function (day) {
         const cell = document.createElement("div");
         cell.className = "calendar-row-cell";
-        cell.textContent = day.date;
+        cell.textContent = getDayNumberLabel(day.date, mergedOptions);
         applyCellStyle(cell, day, mergedOptions);
 
         cell.title = "曜日: " + day.weekdayName +
@@ -308,7 +334,7 @@
       month.days.forEach(function (day) {
         const cell = document.createElement("div");
         cell.className = "calendar-column-cell";
-        cell.textContent = day.date;
+        cell.textContent = getDayNumberLabel(day.date, mergedOptions);
         applyCellStyle(cell, day, mergedOptions);
 
         cell.title = "曜日: " + day.weekdayName +

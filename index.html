@@ -220,6 +220,10 @@
       const styleParameterList = document.getElementById("styleParameterList");
 
       let currentYearData = null;
+      const DEFAULT_DAY_NUMBER_LABELS = Array.from({ length: 31 }, function (_, index) {
+        return String(index + 1);
+      });
+
       const defaultStyleOptions = {
         typography: {
           fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
@@ -250,7 +254,8 @@
         },
         labels: {
           yearMonthFormat: "{year} / {month}",
-          weekdayLabels: ["日", "月", "火", "水", "木", "金", "土"]
+          weekdayLabels: ["日", "月", "火", "水", "木", "金", "土"],
+          dayNumberLabels: DEFAULT_DAY_NUMBER_LABELS
         }
       };
 
@@ -271,7 +276,8 @@
         { path: "cell.border.style", description: "セル境界線のスタイル (solid, dashed など)" },
         { path: "cell.border.radius", description: "セル角の丸み (px)" },
         { path: "labels.yearMonthFormat", description: "{year}/{month}を差し替える年月表示テンプレート" },
-        { path: "labels.weekdayLabels", description: "曜日ラベル（7件の配列）" }
+        { path: "labels.weekdayLabels", description: "曜日ラベル（7件の配列）" },
+        { path: "labels.dayNumberLabels", description: "1〜31日の表示内容（31件の配列）" }
       ];
 
       function cloneDefaultStyleOptions() {
