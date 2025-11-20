@@ -472,9 +472,15 @@
             listEl.className = "cell-entries";
             td.appendChild(numberEl);
             td.appendChild(listEl);
+            //td.addEventListener("click", function () {
+            //  selectDay(currentDay);
+            //});
+            // その時点の currentDay を定数にコピーして固定する
+            const fixedDay = currentDay; 
+            
             td.addEventListener("click", function () {
-              selectDay(currentDay);
-            });
+              selectDay(fixedDay); // コピーした定数を渡す
+            });            
             renderCellJsonSummary(currentDay, listEl);
             if (state.selectedDay === currentDay) {
               td.classList.add("selected");
