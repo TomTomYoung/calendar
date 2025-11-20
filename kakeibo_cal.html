@@ -4,15 +4,36 @@
   <meta charset="UTF-8">
   <title>家計簿 & カロリーカレンダー</title>
   <style>
+    :root {
+      --calendar-font-family: "Noto Sans JP", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      --calendar-font-size: 14px;
+      --calendar-header-font-size: 13px;
+      --calendar-page-bg: #f8fafc;
+      --calendar-text-color: #0f172a;
+      --calendar-header-bg: #eef2ff;
+      --calendar-header-color: #475569;
+      --calendar-cell-bg: #fff;
+      --calendar-weekend-bg: #fff;
+      --calendar-cell-hover: #eff6ff;
+      --calendar-cell-selected-bg: #e0ecff;
+      --calendar-cell-selected-border: #2563eb;
+      --calendar-cell-border: #e2e8f0;
+      --calendar-entry-bg: #f1f5f9;
+      --calendar-entry-color: #0f172a;
+      --calendar-badge-bg: #dbeafe;
+      --calendar-badge-color: #475569;
+      --calendar-today-outline: #f97316;
+    }
     * {
       box-sizing: border-box;
     }
     body {
-      font-family: "Noto Sans JP", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font-family: var(--calendar-font-family);
+      font-size: var(--calendar-font-size);
       margin: 0;
       padding: 24px;
-      background: #f8fafc;
-      color: #0f172a;
+      background: var(--calendar-page-bg);
+      color: var(--calendar-text-color);
       line-height: 1.5;
     }
     h1 {
@@ -93,32 +114,38 @@
     }
     table.calendar-grid th,
     table.calendar-grid td {
-      border: 1px solid #e2e8f0;
+      border: 1px solid var(--calendar-cell-border);
       padding: 4px;
       vertical-align: top;
       min-height: 90px;
-      background: #fff;
+      background: var(--calendar-cell-bg);
     }
     table.calendar-grid th {
       text-align: center;
-      background: #eef2ff;
-      color: #475569;
-      font-size: 13px;
+      background: var(--calendar-header-bg);
+      color: var(--calendar-header-color);
+      font-size: var(--calendar-header-font-size);
     }
     td.day-cell {
       cursor: pointer;
       transition: background 0.2s ease, border-color 0.2s ease;
     }
     td.day-cell:hover {
-      background: #eff6ff;
+      background: var(--calendar-cell-hover);
+    }
+    td.day-cell.weekend-cell:not(.selected) {
+      background: var(--calendar-weekend-bg);
     }
     td.day-cell.selected {
-      border: 2px solid #2563eb;
-      background: #e0ecff;
+      border: 2px solid var(--calendar-cell-selected-border);
+      background: var(--calendar-cell-selected-bg);
+    }
+    td.day-cell.today-cell {
+      outline: 2px solid var(--calendar-today-outline);
     }
     td.day-cell .day-number {
       font-weight: 600;
-      color: #0f172a;
+      color: var(--calendar-text-color);
       margin-bottom: 4px;
     }
     .cell-entries {
@@ -135,9 +162,9 @@
       justify-content: space-between;
       gap: 6px;
       padding: 2px 4px;
-      background: #f1f5f9;
+      background: var(--calendar-entry-bg);
       border-radius: 6px;
-      color: #0f172a;
+      color: var(--calendar-entry-color);
     }
     .entry-card h2 {
       margin-top: 0;
@@ -253,8 +280,8 @@
     }
     .cell-summary-badge {
       font-size: 10px;
-      color: #475569;
-      background: #dbeafe;
+      color: var(--calendar-badge-color);
+      background: var(--calendar-badge-bg);
       border-radius: 999px;
       padding: 0 6px;
     }
@@ -443,6 +470,21 @@
     <h2>ビジュアル設定</h2>
     <p class="page-lead">カレンダー本体の見た目やキー・値に応じた着色ルールを JSON で調整できます。</p>
     <div class="json-instruction">
+      カレンダーの塗り分け (背景色・文字色・フォントなど) と、キー・値に応じたハイライト設定をそれぞれ JSON で管理します。データ本体とは分離されます。
+    </div>
+
+    <h3>カレンダースタイル</h3>
+    <div class="json-editor">
+      <textarea id="styleConfigInput" spellcheck="false"></textarea>
+    </div>
+    <div class="json-actions">
+      <button id="applyStyleConfigButton" type="button">スタイルを反映</button>
+      <button id="resetStyleConfigButton" type="button">スタイルを初期化</button>
+    </div>
+    <div id="styleConfigStatus" class="json-status">背景色やフォント、週末色などの外観を変更できます。</div>
+
+    <h3>着色ルール</h3>
+    <div class="json-instruction">
       例: <code>{"highlightRules":{"keyColors":{"receipt":"#e0f2fe"},"valueContains":[{"text":"kcal","color":"#fef9c3"}]}}</code>
     </div>
     <div class="json-editor">
@@ -489,13 +531,45 @@
         }
       };
 
+      const DEFAULT_STYLE_CONFIG = {
+        typography: {
+          fontFamily: "\"Noto Sans JP\", system-ui, -apple-system, BlinkMacSystemFont, \"Segoe UI\", sans-serif",
+          fontSize: "14px",
+          textColor: "#0f172a"
+        },
+        layout: {
+          pageBackground: "#f8fafc",
+          header: {
+            background: "#eef2ff",
+            color: "#475569",
+            fontSize: "13px"
+          }
+        },
+        cells: {
+          background: "#fff",
+          weekendBackground: "#fff7ed",
+          hover: "#eff6ff",
+          selectedBackground: "#e0ecff",
+          selectedBorder: "#2563eb",
+          borderColor: "#e2e8f0",
+          todayOutline: "#f97316"
+        },
+        entries: {
+          background: "#f1f5f9",
+          color: "#0f172a",
+          badgeBackground: "#dbeafe",
+          badgeColor: "#475569"
+        }
+      };
+
       const state = {
         year: 0,
         month: 0,
         startWeekday: 0,
         selectedDay: null,
         entries: {},
-        visualConfig: DEFAULT_HIGHLIGHT_CONFIG
+        visualConfig: DEFAULT_HIGHLIGHT_CONFIG,
+        styleConfig: DEFAULT_STYLE_CONFIG
       };
 
       const yearInput = document.getElementById("yearInput");
@@ -516,6 +590,10 @@
       const visualConfigStatus = document.getElementById("visualConfigStatus");
       const applyVisualConfigButton = document.getElementById("applyVisualConfigButton");
       const resetVisualConfigButton = document.getElementById("resetVisualConfigButton");
+      const styleConfigInput = document.getElementById("styleConfigInput");
+      const styleConfigStatus = document.getElementById("styleConfigStatus");
+      const applyStyleConfigButton = document.getElementById("applyStyleConfigButton");
+      const resetStyleConfigButton = document.getElementById("resetStyleConfigButton");
 
       function initSelectors() {
         const now = new Date();
@@ -578,6 +656,52 @@
           }
         });
         return target;
+      }
+
+      function applyStyleVariables(config) {
+        const root = document.documentElement;
+        const style = config || DEFAULT_STYLE_CONFIG;
+        root.style.setProperty("--calendar-font-family", style.typography && style.typography.fontFamily || "");
+        root.style.setProperty("--calendar-font-size", style.typography && style.typography.fontSize || "");
+        root.style.setProperty("--calendar-text-color", style.typography && style.typography.textColor || "");
+        root.style.setProperty("--calendar-header-font-size", style.layout && style.layout.header && style.layout.header.fontSize || "");
+        root.style.setProperty("--calendar-page-bg", style.layout && style.layout.pageBackground || "");
+        root.style.setProperty("--calendar-header-bg", style.layout && style.layout.header && style.layout.header.background || "");
+        root.style.setProperty("--calendar-header-color", style.layout && style.layout.header && style.layout.header.color || "");
+
+        root.style.setProperty("--calendar-cell-bg", style.cells && style.cells.background || "");
+        root.style.setProperty("--calendar-weekend-bg", style.cells && style.cells.weekendBackground || "");
+        root.style.setProperty("--calendar-cell-hover", style.cells && style.cells.hover || "");
+        root.style.setProperty("--calendar-cell-selected-bg", style.cells && style.cells.selectedBackground || "");
+        root.style.setProperty("--calendar-cell-selected-border", style.cells && style.cells.selectedBorder || "");
+        root.style.setProperty("--calendar-cell-border", style.cells && style.cells.borderColor || "");
+        root.style.setProperty("--calendar-today-outline", style.cells && style.cells.todayOutline || "");
+
+        root.style.setProperty("--calendar-entry-bg", style.entries && style.entries.background || "");
+        root.style.setProperty("--calendar-entry-color", style.entries && style.entries.color || "");
+        root.style.setProperty("--calendar-badge-bg", style.entries && style.entries.badgeBackground || "");
+        root.style.setProperty("--calendar-badge-color", style.entries && style.entries.badgeColor || "");
+      }
+
+      function parseStyleConfigInput() {
+        try {
+          const parsed = JSON.parse(styleConfigInput.value || "{}");
+          const merged = JSON.parse(JSON.stringify(DEFAULT_STYLE_CONFIG));
+          if (parsed && typeof parsed === "object") {
+            mergeDeep(merged, parsed);
+          }
+          state.styleConfig = merged;
+          applyStyleVariables(merged);
+          styleConfigStatus.textContent = "スタイル設定を読み込みました。";
+          styleConfigStatus.classList.remove("error");
+          return merged;
+        } catch (error) {
+          state.styleConfig = DEFAULT_STYLE_CONFIG;
+          applyStyleVariables(DEFAULT_STYLE_CONFIG);
+          styleConfigStatus.textContent = "スタイル設定のJSONを確認してください: " + error.message;
+          styleConfigStatus.classList.add("error");
+          return DEFAULT_STYLE_CONFIG;
+        }
       }
 
       function parseVisualConfigInput() {
@@ -682,6 +806,7 @@
         const firstDay = new Date(state.year, state.month - 1, 1);
         const daysInMonth = new Date(state.year, state.month, 0).getDate();
         const leadingBlank = (firstDay.getDay() - state.startWeekday + 7) % 7;
+        const today = new Date();
 
         calendarTitle.textContent = state.year + "年 " + state.month + "月";
         buildWeekdayHeader();
@@ -702,6 +827,15 @@
             }
             td.classList.add("day-cell");
             td.dataset.day = String(currentDay);
+            const date = new Date(state.year, state.month - 1, currentDay);
+            const weekday = date.getDay();
+            td.dataset.weekday = String(weekday);
+            td.classList.add(weekday === 0 || weekday === 6 ? "weekend-cell" : "weekday-cell");
+            if (date.getFullYear() === today.getFullYear() &&
+              date.getMonth() === today.getMonth() &&
+              date.getDate() === today.getDate()) {
+              td.classList.add("today-cell");
+            }
             const numberEl = document.createElement("div");
             numberEl.className = "day-number";
             numberEl.textContent = currentDay;
@@ -968,6 +1102,23 @@
         refreshAllHighlights();
       }
 
+      function initializeStyleConfigPanel() {
+        if (!styleConfigInput) return;
+        styleConfigInput.value = JSON.stringify(DEFAULT_STYLE_CONFIG, null, 2);
+        parseStyleConfigInput();
+      }
+
+      function handleApplyStyleConfig() {
+        parseStyleConfigInput();
+        refreshAllHighlights();
+      }
+
+      function handleResetStyleConfig() {
+        styleConfigInput.value = JSON.stringify(DEFAULT_STYLE_CONFIG, null, 2);
+        parseStyleConfigInput();
+        refreshAllHighlights();
+      }
+
       function initializeVisualConfigPanel() {
         if (!visualConfigInput) return;
         visualConfigInput.value = JSON.stringify(DEFAULT_HIGHLIGHT_CONFIG, null, 2);
@@ -995,9 +1146,12 @@
       monthInput.addEventListener("change", buildCalendar);
       applyVisualConfigButton.addEventListener("click", handleApplyVisualConfig);
       resetVisualConfigButton.addEventListener("click", handleResetVisualConfig);
+      applyStyleConfigButton.addEventListener("click", handleApplyStyleConfig);
+      resetStyleConfigButton.addEventListener("click", handleResetStyleConfig);
 
       initSelectors();
       loadEntries();
+      initializeStyleConfigPanel();
       initializeVisualConfigPanel();
       buildCalendar();
       if (state.selectedDay) {
