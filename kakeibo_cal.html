@@ -353,6 +353,26 @@
     </section>
   </div>
 
+  <section class="entry-card visual-card">
+    <h2>ビジュアル設定</h2>
+    <p class="page-lead">カレンダー本体の見た目やキー・値に応じた着色ルールを JSON で調整できます。</p>
+    <div class="json-instruction">
+      例: <code>{"highlightRules":{"keyColors":{"receipt":"#e0f2fe"},"valueContains":[{"text":"kcal","color":"#fef9c3"}]}}</code>
+    </div>
+    <div class="json-editor">
+      <textarea id="visualConfigInput" spellcheck="false"></textarea>
+    </div>
+    <div class="json-actions">
+      <button id="applyVisualConfigButton" type="button">設定を反映</button>
+      <button id="resetVisualConfigButton" type="button">デフォルトに戻す</button>
+    </div>
+    <div id="visualConfigStatus" class="json-status">家計簿データとは分離された見た目設定です。</div>
+  </section>
+
+  <script src="calendar-algorithms.js"></script>
+  <script src="calendar-extensions.js"></script>
+  <script src="calendar-core.js"></script>
+  <script src="calendar-views.js"></script>
   <script>
     (function () {
       "use strict";
@@ -365,12 +385,31 @@
         memo: "控えめに"
       }, null, 2);
 
+      const DEFAULT_HIGHLIGHT_CONFIG = {
+        highlightRules: {
+          keyColors: {
+            receipt: "#e0f2fe",
+            calorie: "#fee2e2",
+            memo: "#ecfeff"
+          },
+          valueContains: [
+            { text: "kcal", color: "#fef9c3" },
+            { text: "memo", color: "#bbf7d0" }
+          ],
+          badge: {
+            background: "#e2e8f0",
+            color: "#334155"
+          }
+        }
+      };
+
       const state = {
         year: 0,
         month: 0,
         startWeekday: 0,
         selectedDay: null,
-        entries: {}
+        entries: {},
+        visualConfig: DEFAULT_HIGHLIGHT_CONFIG
       };
 
       const yearInput = document.getElementById("yearInput");
@@ -387,6 +426,10 @@
       const jsonStatus = document.getElementById("jsonStatus");
       const jsonPreview = document.getElementById("jsonPreview");
       const clearDayButton = document.getElementById("clearDayButton");
+      const visualConfigInput = document.getElementById("visualConfigInput");
+      const visualConfigStatus = document.getElementById("visualConfigStatus");
+      const applyVisualConfigButton = document.getElementById("applyVisualConfigButton");
+      const resetVisualConfigButton = document.getElementById("resetVisualConfigButton");
 
       function initSelectors() {
         const now = new Date();
@@ -432,6 +475,86 @@
         } catch (error) {
           console.warn("Failed to save entries", error);
         }
+      }
+
+      function mergeDeep(target, source) {
+        Object.keys(source || {}).forEach(function (key) {
+          const value = source[key];
+          if (value && typeof value === "object" && !Array.isArray(value)) {
+            if (!target[key] || typeof target[key] !== "object" || Array.isArray(target[key])) {
+              target[key] = {};
+            }
+            mergeDeep(target[key], value);
+          } else if (Array.isArray(value)) {
+            target[key] = value.slice();
+          } else {
+            target[key] = value;
+          }
+        });
+        return target;
+      }
+
+      function parseVisualConfigInput() {
+        try {
+          const parsed = JSON.parse(visualConfigInput.value || "{}");
+          const merged = JSON.parse(JSON.stringify(DEFAULT_HIGHLIGHT_CONFIG));
+          if (parsed && typeof parsed === "object") {
+            mergeDeep(merged, parsed);
+          }
+          state.visualConfig = merged;
+          visualConfigStatus.textContent = "ビジュアル設定を読み込みました。";
+          visualConfigStatus.classList.remove("error");
+          return merged;
+        } catch (error) {
+          visualConfigStatus.textContent = "ビジュアル設定のJSONを確認してください: " + error.message;
+          visualConfigStatus.classList.add("error");
+          state.visualConfig = DEFAULT_HIGHLIGHT_CONFIG;
+          return DEFAULT_HIGHLIGHT_CONFIG;
+        }
+      }
+
+      function valueMatchesRule(value, rule) {
+        if (!rule || !rule.text) return false;
+        const stringValue = typeof value === "string" ? value : JSON.stringify(value);
+        return stringValue.toLowerCase().includes(String(rule.text).toLowerCase());
+      }
+
+      function findHighlightColor(key, value, rules) {
+        if (!rules) return null;
+        if (rules.keyColors && rules.keyColors[key]) {
+          return rules.keyColors[key];
+        }
+        if (rules.valueContains && rules.valueContains.length > 0) {
+          for (let i = 0; i < rules.valueContains.length; i++) {
+            if (valueMatchesRule(value, rules.valueContains[i])) {
+              return rules.valueContains[i].color;
+            }
+          }
+        }
+        return null;
+      }
+
+      function applyEntryHighlight(li, key, value) {
+        const rules = state.visualConfig && state.visualConfig.highlightRules;
+        if (!rules) return;
+        const color = findHighlightColor(key, value, rules) || null;
+        if (color) {
+          li.style.backgroundColor = color;
+        }
+        const badge = li.querySelector(".cell-summary-badge");
+        if (badge && rules.badge) {
+          badge.style.backgroundColor = rules.badge.background;
+          badge.style.color = rules.badge.color;
+        }
+      }
+
+      function refreshAllHighlights() {
+        document.querySelectorAll("td.day-cell").forEach(function (cell) {
+          const dayNumber = Number(cell.dataset.day);
+          if (dayNumber) {
+            renderCellJsonSummary(dayNumber, cell.querySelector(".cell-entries"));
+          }
+        });
       }
 
       function formatDateKey(year, month, day) {
@@ -542,6 +665,7 @@
           if (parsed === null || typeof parsed !== "object") {
             const li = document.createElement("li");
             li.textContent = String(parsed);
+            applyEntryHighlight(li, "value", parsed);
             target.appendChild(li);
             return;
           }
@@ -586,6 +710,7 @@
                    text = String(item);
                 }
                 subLi.textContent =  text;
+                applyEntryHighlight(subLi, key, item);
                 subList.appendChild(subLi);
               });
               li.appendChild(subList);
@@ -611,6 +736,7 @@
               li.textContent = key + " : " + valStr;
             }
 
+            applyEntryHighlight(li, key, value);
             target.appendChild(li);
           });
 
@@ -705,6 +831,7 @@
           return;
         }
         updatePreviewFromEditor({ save: true });
+        refreshViewerDataFromEntries();
       }
 
       function handleSaveJson() {
@@ -713,6 +840,7 @@
           return;
         }
         updatePreviewFromEditor({ save: true });
+        refreshAllHighlights();
       }
 
       function handleFormatJson() {
@@ -730,6 +858,7 @@
           const parsed = JSON.parse(trimmed);
           jsonEditor.value = JSON.stringify(parsed, null, 2);
           updatePreviewFromEditor({ save: true });
+          refreshAllHighlights();
         } catch (error) {
           jsonStatus.textContent = "⚠️ JSONエラー: " + error.message;
           jsonStatus.classList.add("error");
@@ -750,6 +879,24 @@
         jsonStatus.textContent = "この日のJSONを削除しました。";
         jsonStatus.classList.remove("error");
         renderCellJsonSummary(state.selectedDay);
+        refreshAllHighlights();
+      }
+
+      function initializeVisualConfigPanel() {
+        if (!visualConfigInput) return;
+        visualConfigInput.value = JSON.stringify(DEFAULT_HIGHLIGHT_CONFIG, null, 2);
+        parseVisualConfigInput();
+      }
+
+      function handleApplyVisualConfig() {
+        parseVisualConfigInput();
+        refreshAllHighlights();
+      }
+
+      function handleResetVisualConfig() {
+        visualConfigInput.value = JSON.stringify(DEFAULT_HIGHLIGHT_CONFIG, null, 2);
+        parseVisualConfigInput();
+        refreshAllHighlights();
       }
 
       buildButton.addEventListener("click", buildCalendar);
@@ -760,15 +907,19 @@
       startWeekdayInput.addEventListener("change", buildCalendar);
       yearInput.addEventListener("change", buildCalendar);
       monthInput.addEventListener("change", buildCalendar);
+      applyVisualConfigButton.addEventListener("click", handleApplyVisualConfig);
+      resetVisualConfigButton.addEventListener("click", handleResetVisualConfig);
 
       initSelectors();
       loadEntries();
+      initializeVisualConfigPanel();
       buildCalendar();
       if (state.selectedDay) {
         selectDay(state.selectedDay);
       } else {
         refreshJsonEditor();
       }
+      refreshAllHighlights();
     })();
   </script>
 </body>
