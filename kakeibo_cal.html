@@ -258,6 +258,34 @@
       border-radius: 999px;
       padding: 0 6px;
     }
+    /* --- 追加スタイル: 折り畳み機能用 --- */
+    .toggle-btn {
+      cursor: pointer;
+      color: #2563eb;
+      margin-right: 4px;
+      user-select: none;
+      font-weight: bold;
+      font-family: monospace;
+    }
+    .toggle-btn:hover {
+      color: #1d4ed8;
+    }
+    .sub-list {
+      display: none; /* デフォルトは非表示 */
+      padding-left: 8px;
+      margin: 0;
+      list-style: none;
+      border-left: 2px solid #e2e8f0;
+    }
+    .sub-list.open {
+      display: block; /* openクラスがついたら表示 */
+    }
+    .sub-list li {
+      font-size: 10px;
+      color: #64748b;
+      background: transparent;
+      padding: 1px 0;
+    }
   </style>
 </head>
 <body>
@@ -497,66 +525,95 @@
         updateSelectedDateLabel();
       }
 
-      function describeValueForSummary(value) {
-        if (value === null) {
-          return "null";
-        }
-        if (Array.isArray(value)) {
-          return "配列(" + value.length + "件)";
-        }
-        if (typeof value === "object") {
-          return "オブジェクト(" + Object.keys(value).length + "項目)";
-        }
-        if (typeof value === "number") {
-          return value.toLocaleString();
-        }
-        return String(value);
-      }
-
-      function summarizeJsonForCell(value) {
-        if (value === null || typeof value !== "object") {
-          return [describeValueForSummary(value)];
-        }
-        const entries = Array.isArray(value)
-          ? value.map(function (item, index) {
-            return "[" + index + "] " + describeValueForSummary(item);
-          })
-          : Object.keys(value).map(function (key) {
-            return key + "：" + describeValueForSummary(value[key]);
-          });
-        return entries;
-      }
-
       function renderCellJsonSummary(day, container) {
         const jsonString = getJsonStringForDay(state.year, state.month, day);
         const target = container || document.querySelector(
           '.day-cell[data-day="' + day + '"] .cell-entries'
         );
-        if (!target) {
-          return;
-        }
-        target.innerHTML = "";
-        if (!jsonString) {
-          return;
-        }
+        if (!target) return;
+        
+        target.innerHTML = ""; // 一旦クリア
+        if (!jsonString) return;
+
         try {
           const parsed = JSON.parse(jsonString);
-          const allLines = summarizeJsonForCell(parsed);
-          allLines.slice(0, 3).forEach(function (line) {
+          
+          // オブジェクトか配列でない場合はそのまま表示
+          if (parsed === null || typeof parsed !== "object") {
             const li = document.createElement("li");
-            li.textContent = line;
+            li.textContent = String(parsed);
+            target.appendChild(li);
+            return;
+          }
+
+          // JSONのキーごとに処理
+          Object.keys(parsed).forEach(function(key) {
+            const value = parsed[key];
+            const li = document.createElement("li");
+            
+            // --- 配列の場合: 折り畳みUIを作成 ---
+            if (Array.isArray(value)) {
+              li.style.display = "block"; // フレックス解除して縦積みにする
+
+              // ヘッダー行 (例: [+] receipt (2))
+              const headerDiv = document.createElement("div");
+              headerDiv.style.display = "flex";
+              headerDiv.style.alignItems = "center";
+
+              const toggleBtn = document.createElement("span");
+              toggleBtn.className = "toggle-btn";
+              toggleBtn.textContent = "[+]"; // 閉じた状態のアイコン
+              
+              const label = document.createElement("span");
+              label.textContent = key + " (" + value.length + ")";
+              
+              headerDiv.appendChild(toggleBtn);
+              headerDiv.appendChild(label);
+              li.appendChild(headerDiv);
+
+              // 中身のリスト (初期は非表示)
+              const subList = document.createElement("ul");
+              subList.className = "sub-list";
+              
+              value.forEach((item, idx) => {
+                const subLi = document.createElement("li");
+                // 中身がオブジェクトなら簡易表示、それ以外ならそのまま
+                let text = "";
+                if (item && typeof item === "object") {
+                   // オブジェクトの中身を適当に連結して表示 (例: 昼食: 1200)
+                   text = Object.values(item).join(": ");
+                } else {
+                   text = String(item);
+                }
+                subLi.textContent =  text;
+                subList.appendChild(subLi);
+              });
+              li.appendChild(subList);
+
+              // クリックイベント (バブリング停止が重要)
+              toggleBtn.addEventListener("click", function(e) {
+                e.stopPropagation(); // 親の「日付選択」を発動させない
+                
+                const isOpen = subList.classList.toggle("open");
+                toggleBtn.textContent = isOpen ? "[-]" : "[+]";
+              });
+
+            } 
+            // --- 配列以外の場合: 通常表示 ---
+            else {
+              // オブジェクト等の場合の簡易表示
+              let valStr = "";
+              if (value && typeof value === "object") {
+                 valStr = "{" + Object.keys(value).length + "}";
+              } else {
+                 valStr = String(value);
+              }
+              li.textContent = key + " : " + valStr;
+            }
+
             target.appendChild(li);
           });
-          if (allLines.length > 3) {
-            const more = document.createElement("li");
-            more.textContent = "…ほか" + (allLines.length - 3) + "件";
-            target.appendChild(more);
-          }
-          if (allLines.length === 0) {
-            const empty = document.createElement("li");
-            empty.textContent = "JSONあり (表示できる項目なし)";
-            target.appendChild(empty);
-          }
+
         } catch (error) {
           const li = document.createElement("li");
           li.textContent = "JSONエラー";
