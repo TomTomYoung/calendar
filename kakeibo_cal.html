@@ -258,6 +258,92 @@
       border-radius: 999px;
       padding: 0 6px;
     }
+    .viewer-card {
+      margin-top: 20px;
+      background: #fff;
+      border-radius: 16px;
+      padding: 16px;
+      box-shadow: 0 20px 45px rgba(15, 23, 42, 0.08);
+    }
+    .viewer-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+    .viewer-controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: flex-end;
+    }
+    .viewer-controls label {
+      display: flex;
+      flex-direction: column;
+      font-size: 12px;
+      color: #475569;
+    }
+    .viewer-controls input,
+    .viewer-controls select {
+      margin-top: 4px;
+      padding: 6px 8px;
+      border: 1px solid #cbd5f5;
+      border-radius: 8px;
+      font-size: 13px;
+      min-width: 120px;
+    }
+    .viewer-controls button {
+      border: none;
+      background: #0ea5e9;
+      color: #fff;
+      padding: 10px 16px;
+      border-radius: 999px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s ease;
+    }
+    .viewer-controls button:hover {
+      background: #0284c7;
+    }
+    .viewer-config-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 12px;
+      margin-top: 10px;
+    }
+    .viewer-config-panel h3 {
+      margin: 0 0 6px;
+      font-size: 14px;
+    }
+    .viewer-config-panel textarea {
+      width: 100%;
+      min-height: 180px;
+      resize: vertical;
+      padding: 10px 12px;
+      border: 1px solid #cbd5f5;
+      border-radius: 12px;
+      font-family: "JetBrains Mono", "Roboto Mono", Consolas, monospace;
+      font-size: 12px;
+      background: #0f172a;
+      color: #e2e8f0;
+    }
+    .viewer-status {
+      font-size: 12px;
+      color: #475569;
+      margin-top: 6px;
+    }
+    .viewer-status.error {
+      color: #dc2626;
+    }
+    .viewer-calendar-container {
+      margin-top: 12px;
+      overflow-x: auto;
+    }
+    .viewer-highlighted {
+      box-shadow: inset 0 0 0 2px rgba(14, 165, 233, 0.8);
+    }
     /* --- 追加スタイル: 折り畳み機能用 --- */
     .toggle-btn {
       cursor: pointer;
@@ -353,6 +439,56 @@
     </section>
   </div>
 
+  <section class="viewer-card">
+    <div class="viewer-header">
+      <div>
+        <h2>ビューア</h2>
+        <p class="page-lead">index.html と同等のカレンダービューを、家計簿データとは別のビューアJSONで制御できます。</p>
+      </div>
+      <div class="viewer-controls">
+        <label>
+          年
+          <input type="number" id="viewerYearInput" min="1" max="9999">
+        </label>
+        <label>
+          ビュー
+          <select id="viewerViewSelect">
+            <option value="grid">グリッド</option>
+            <option value="row">行ビュー</option>
+            <option value="column">列ビュー</option>
+          </select>
+        </label>
+        <label>
+          アルゴリズム
+          <select id="viewerAlgorithmSelect">
+            <option value="sakamoto">Sakamoto</option>
+            <option value="zeller">Zeller</option>
+            <option value="dateApi">Date API</option>
+          </select>
+        </label>
+        <button id="renderViewerButton" type="button">ビューアを更新</button>
+      </div>
+    </div>
+    <div class="viewer-config-grid">
+      <div class="viewer-config-panel">
+        <h3>データJSON（家計簿データとは別枠）</h3>
+        <textarea id="viewerDataInput" spellcheck="false"></textarea>
+        <div class="viewer-status" id="viewerDataStatus">家計簿エディタの内容とは独立しています。</div>
+      </div>
+      <div class="viewer-config-panel">
+        <h3>ビューア設定JSON（スタイル・着色ルール）</h3>
+        <textarea id="viewerConfigInput" spellcheck="false"></textarea>
+        <div class="viewer-status" id="viewerConfigStatus">特定のキーや値に応じた着色ができます。</div>
+      </div>
+    </div>
+    <div class="viewer-status" id="viewerStatus"></div>
+    <div class="viewer-calendar-container" id="viewerCalendar"></div>
+  </section>
+
+  <script src="calendar-algorithms.js"></script>
+  <script src="calendar-extensions.js"></script>
+  <script src="calendar-core.js"></script>
+  <script src="calendar-views.js"></script>
   <script>
     (function () {
       "use strict";
@@ -364,6 +500,72 @@
         calorie: 1800,
         memo: "控えめに"
       }, null, 2);
+
+      const VIEWER_STYLE_DEFAULTS = {
+        typography: {
+          fontFamily: "system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+          fontSize: "11px",
+          weekdayTextColor: "#000000",
+          weekendTextColor: "#c03636",
+          holidayTextColor: "#c03636",
+          nthWeekdayTextColor: {
+            1: null,
+            2: null,
+            3: null,
+            4: "#0044cc",
+            5: "#008800"
+          }
+        },
+        cell: {
+          width: 28,
+          height: 24,
+          paddingX: 0,
+          paddingY: 0,
+          backgroundColor: "#ffffff",
+          backgroundColors: {
+            weekday: null,
+            weekend: null,
+            holiday: null,
+            nthWeekday: {
+              1: null,
+              2: null,
+              3: null,
+              4: null,
+              5: null
+            }
+          },
+          border: {
+            width: 1,
+            style: "solid",
+            color: "#dddddd",
+            radius: 0
+          }
+        },
+        labels: {
+          yearMonthFormat: "{year} / {month}",
+          weekdayLabels: ["日", "月", "火", "水", "木", "金", "土"],
+          dayNumberLabels: Array.from({ length: 31 }, function (_, index) {
+            return String(index + 1);
+          })
+        }
+      };
+
+      const DEFAULT_VIEWER_CONFIG = {
+        view: "grid",
+        algorithm: "dateApi",
+        styleOptions: VIEWER_STYLE_DEFAULTS,
+        highlightRules: {
+          keyColors: {
+            receipt: "#e0f2fe",
+            calorie: "#fee2e2",
+            memo: "#ecfeff"
+          },
+          valueContains: [
+            { text: "kcal", color: "#fef9c3" },
+            { text: "memo", color: "#bbf7d0" }
+          ]
+        }
+      };
 
       const state = {
         year: 0,
@@ -387,6 +589,16 @@
       const jsonStatus = document.getElementById("jsonStatus");
       const jsonPreview = document.getElementById("jsonPreview");
       const clearDayButton = document.getElementById("clearDayButton");
+      const viewerDataInput = document.getElementById("viewerDataInput");
+      const viewerConfigInput = document.getElementById("viewerConfigInput");
+      const viewerDataStatus = document.getElementById("viewerDataStatus");
+      const viewerConfigStatus = document.getElementById("viewerConfigStatus");
+      const viewerCalendar = document.getElementById("viewerCalendar");
+      const viewerStatus = document.getElementById("viewerStatus");
+      const viewerYearInput = document.getElementById("viewerYearInput");
+      const viewerViewSelect = document.getElementById("viewerViewSelect");
+      const viewerAlgorithmSelect = document.getElementById("viewerAlgorithmSelect");
+      const renderViewerButton = document.getElementById("renderViewerButton");
 
       function initSelectors() {
         const now = new Date();
@@ -432,6 +644,175 @@
         } catch (error) {
           console.warn("Failed to save entries", error);
         }
+      }
+
+      function cloneViewerStyleOptions() {
+        return JSON.parse(JSON.stringify(VIEWER_STYLE_DEFAULTS));
+      }
+
+      function mergeDeep(target, source) {
+        Object.keys(source || {}).forEach(function (key) {
+          const value = source[key];
+          if (value && typeof value === "object" && !Array.isArray(value)) {
+            if (!target[key] || typeof target[key] !== "object" || Array.isArray(target[key])) {
+              target[key] = {};
+            }
+            mergeDeep(target[key], value);
+          } else if (Array.isArray(value)) {
+            target[key] = value.slice();
+          } else {
+            target[key] = value;
+          }
+        });
+        return target;
+      }
+
+      function buildViewerConfigFromInput() {
+        try {
+          const parsed = JSON.parse(viewerConfigInput.value || "{}");
+          const merged = JSON.parse(JSON.stringify(DEFAULT_VIEWER_CONFIG));
+          if (parsed && typeof parsed === "object") {
+            mergeDeep(merged, parsed);
+          }
+          viewerConfigStatus.textContent = "ビューア設定を読み込みました。";
+          viewerConfigStatus.classList.remove("error");
+          return merged;
+        } catch (error) {
+          viewerConfigStatus.textContent = "ビューア設定のJSONを確認してください: " + error.message;
+          viewerConfigStatus.classList.add("error");
+          return JSON.parse(JSON.stringify(DEFAULT_VIEWER_CONFIG));
+        }
+      }
+
+      function exportEntriesAsObject() {
+        const result = {};
+        Object.keys(state.entries || {}).forEach(function (key) {
+          const text = state.entries[key];
+          try {
+            result[key] = JSON.parse(text);
+          } catch (error) {
+            result[key] = text;
+          }
+        });
+        return result;
+      }
+
+      function refreshViewerDataFromEntries() {
+        if (!viewerDataInput) return;
+        const exported = exportEntriesAsObject();
+        viewerDataInput.value = JSON.stringify(exported, null, 2);
+        viewerDataStatus.textContent = "家計簿エディタの内容をビューア用JSONに反映しました。";
+        viewerDataStatus.classList.remove("error");
+      }
+
+      function parseViewerDataJson() {
+        try {
+          const parsed = JSON.parse(viewerDataInput.value || "{}");
+          if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+            throw new Error("オブジェクト形式で日付キーを渡してください。");
+          }
+          viewerDataStatus.textContent = "データJSONを読み込みました。";
+          viewerDataStatus.classList.remove("error");
+          return parsed;
+        } catch (error) {
+          viewerDataStatus.textContent = "データJSONの解析に失敗しました: " + error.message;
+          viewerDataStatus.classList.add("error");
+          return {};
+        }
+      }
+
+      function valueMatchesRule(value, rule) {
+        if (!rule || !rule.text) return false;
+        const stringValue = typeof value === "string" ? value : JSON.stringify(value);
+        return stringValue.toLowerCase().includes(String(rule.text).toLowerCase());
+      }
+
+      function collectHighlightColors(entry, rules) {
+        const colors = [];
+        if (!entry || !rules) return colors;
+
+        if (typeof entry === "object") {
+          Object.keys(entry).forEach(function (key) {
+            if (rules.keyColors && rules.keyColors[key]) {
+              colors.push(rules.keyColors[key]);
+            }
+            const value = entry[key];
+            if (Array.isArray(value)) {
+              value.forEach(function (item) {
+                colors.push.apply(colors, collectHighlightColors(item, rules));
+              });
+            } else if (value && typeof value === "object") {
+              colors.push.apply(colors, collectHighlightColors(value, rules));
+            } else if (rules.valueContains) {
+              rules.valueContains.forEach(function (rule) {
+                if (valueMatchesRule(value, rule)) {
+                  colors.push(rule.color);
+                }
+              });
+            }
+          });
+        } else if (rules.valueContains) {
+          rules.valueContains.forEach(function (rule) {
+            if (valueMatchesRule(entry, rule)) {
+              colors.push(rule.color);
+            }
+          });
+        }
+
+        return colors.filter(Boolean);
+      }
+
+      function applyHighlightToCalendar(dataMap, highlightRules) {
+        if (!viewerCalendar) return;
+        const cells = viewerCalendar.querySelectorAll(".calendar-view-day");
+        cells.forEach(function (cell) {
+          cell.classList.remove("viewer-highlighted");
+          if (!cell.dataset.baseBgColor) {
+            cell.dataset.baseBgColor = cell.style.backgroundColor || "";
+          }
+          cell.style.backgroundColor = cell.dataset.baseBgColor || "";
+          const year = Number(cell.dataset.year);
+          const month = Number(cell.dataset.month);
+          const day = Number(cell.dataset.day);
+          const key = formatDateKey(year, month, day);
+          const entry = dataMap[key];
+          if (!entry) {
+            return;
+          }
+          const colors = collectHighlightColors(entry, highlightRules || {});
+          if (colors.length > 0) {
+            const color = colors[0];
+            cell.style.backgroundColor = color;
+            cell.classList.add("viewer-highlighted");
+          }
+        });
+      }
+
+      function renderViewerCalendar() {
+        if (!viewerCalendar) return;
+        const config = buildViewerConfigFromInput();
+        const dataMap = parseViewerDataJson();
+
+        const viewerYear = Number(viewerYearInput.value) || state.year || new Date().getFullYear();
+        viewerYearInput.value = viewerYear;
+
+        CalendarAlgorithmManager.setCalendarAlgorithm(viewerAlgorithmSelect.value || config.algorithm || "dateApi");
+        const yearData = CalendarCore.buildYearData(viewerYear);
+        viewerCalendar.innerHTML = "";
+        const styleOptions = mergeDeep(cloneViewerStyleOptions(), config.styleOptions || {});
+
+        const view = viewerViewSelect.value || config.view || "grid";
+        if (view === "row") {
+          CalendarViews.renderRow(viewerCalendar, yearData, styleOptions);
+        } else if (view === "column") {
+          CalendarViews.renderColumn(viewerCalendar, yearData, styleOptions);
+        } else {
+          CalendarViews.renderGrid(viewerCalendar, yearData, styleOptions);
+        }
+
+        applyHighlightToCalendar(dataMap, config.highlightRules);
+        viewerStatus.textContent = "ビューアを更新しました。";
+        viewerStatus.classList.remove("error");
       }
 
       function formatDateKey(year, month, day) {
@@ -705,6 +1086,7 @@
           return;
         }
         updatePreviewFromEditor({ save: true });
+        refreshViewerDataFromEntries();
       }
 
       function handleSaveJson() {
@@ -713,6 +1095,7 @@
           return;
         }
         updatePreviewFromEditor({ save: true });
+        refreshViewerDataFromEntries();
       }
 
       function handleFormatJson() {
@@ -730,6 +1113,7 @@
           const parsed = JSON.parse(trimmed);
           jsonEditor.value = JSON.stringify(parsed, null, 2);
           updatePreviewFromEditor({ save: true });
+          refreshViewerDataFromEntries();
         } catch (error) {
           jsonStatus.textContent = "⚠️ JSONエラー: " + error.message;
           jsonStatus.classList.add("error");
@@ -750,6 +1134,16 @@
         jsonStatus.textContent = "この日のJSONを削除しました。";
         jsonStatus.classList.remove("error");
         renderCellJsonSummary(state.selectedDay);
+        refreshViewerDataFromEntries();
+      }
+
+      function initializeViewerPanel() {
+        if (!viewerYearInput) return;
+        viewerYearInput.value = state.year || new Date().getFullYear();
+        viewerViewSelect.value = DEFAULT_VIEWER_CONFIG.view;
+        viewerAlgorithmSelect.value = DEFAULT_VIEWER_CONFIG.algorithm;
+        viewerConfigInput.value = JSON.stringify(DEFAULT_VIEWER_CONFIG, null, 2);
+        refreshViewerDataFromEntries();
       }
 
       buildButton.addEventListener("click", buildCalendar);
@@ -760,15 +1154,22 @@
       startWeekdayInput.addEventListener("change", buildCalendar);
       yearInput.addEventListener("change", buildCalendar);
       monthInput.addEventListener("change", buildCalendar);
+      renderViewerButton.addEventListener("click", renderViewerCalendar);
+      viewerDataInput.addEventListener("change", renderViewerCalendar);
+      viewerConfigInput.addEventListener("change", renderViewerCalendar);
+      viewerViewSelect.addEventListener("change", renderViewerCalendar);
+      viewerAlgorithmSelect.addEventListener("change", renderViewerCalendar);
 
       initSelectors();
       loadEntries();
+      initializeViewerPanel();
       buildCalendar();
       if (state.selectedDay) {
         selectDay(state.selectedDay);
       } else {
         refreshJsonEditor();
       }
+      renderViewerCalendar();
     })();
   </script>
 </body>
