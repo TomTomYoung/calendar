@@ -303,6 +303,10 @@
           tr = document.createElement("tr");
         }
         const td = document.createElement("td");
+        td.dataset.year = String(yearData.year);
+        td.dataset.month = String(month.month);
+        td.dataset.day = String(day.date);
+        td.classList.add("calendar-view-day");
         td.textContent = getDayNumberLabel(day.date, mergedOptions);
 
         applyCellStyle(td, day, mergedOptions);
@@ -347,6 +351,10 @@
       month.days.forEach(function (day) {
         const cell = document.createElement("div");
         cell.className = "calendar-row-cell";
+        cell.dataset.year = String(yearData.year);
+        cell.dataset.month = String(month.month);
+        cell.dataset.day = String(day.date);
+        cell.classList.add("calendar-view-day");
         cell.textContent = getDayNumberLabel(day.date, mergedOptions);
         applyCellStyle(cell, day, mergedOptions);
 
@@ -381,6 +389,10 @@
       month.days.forEach(function (day) {
         const cell = document.createElement("div");
         cell.className = "calendar-column-cell";
+        cell.dataset.year = String(yearData.year);
+        cell.dataset.month = String(month.month);
+        cell.dataset.day = String(day.date);
+        cell.classList.add("calendar-view-day");
         cell.textContent = getDayNumberLabel(day.date, mergedOptions);
         applyCellStyle(cell, day, mergedOptions);
 
